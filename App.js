@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import * as SQLite from 'expo-sqlite';
-
+import { initDB } from './database/authDatabase'; // Import async database initialization
+import { View, Text, ActivityIndicator } from 'react-native';
 
 import LoginScreen from './pages/LoginScreen';
 import RegisterScreen from './pages/RegisterScreen';
@@ -28,14 +28,31 @@ function MainAppTabs() {
 }
 
 export default function App() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const setupDatabase = async () => {
+      await initDB();
+      setLoading(false);
+    };
+
+    setupDatabase();
+  }, []);
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Initializing Database...</Text>
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
-        {/* Pre-login screens */}
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
-
-        {/* Main app (after login) */}
         <Stack.Screen name="MainApp" component={MainAppTabs} />
       </Stack.Navigator>
     </NavigationContainer>
