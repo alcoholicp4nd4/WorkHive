@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { initDB } from './database/authDatabase'; // Import async database initialization
+import { getAllUsers, initDB } from './database/authDatabase'; // Import async database initialization
 import { View, Text, ActivityIndicator } from 'react-native';
 
 import LoginScreen from './pages/LoginScreen';
@@ -33,6 +33,7 @@ export default function App() {
   useEffect(() => {
     const setupDatabase = async () => {
       await initDB();
+      await getAllUsers();
       setLoading(false);
     };
 

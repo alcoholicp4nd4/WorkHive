@@ -54,3 +54,16 @@ export const loginUser = async (username, password) => {
     return { success: false, error: error.message };
   }
 };
+
+//get all users
+export const getAllUsers = async () => {
+    const db = await SQLite.openDatabaseAsync('workhive.db');
+  
+    try {
+      const result = await db.getAllAsync(`SELECT * FROM users;`);
+      console.log("📂 All Users in Database:", result);
+    } catch (error) {
+      console.error("❌ Error fetching users:", error);
+    }
+  };
+  
