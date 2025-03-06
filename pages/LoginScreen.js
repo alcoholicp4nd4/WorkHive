@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ Import AsyncStorage
 import { styles } from '../Styles/styles';
 import { loginUser } from '../database/authDatabase';
 
@@ -8,13 +9,28 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    const response = await loginUser(username, password);
+    try {
+      console.log("🔹 Attempting login...");
+      const response = await loginUser(username, password);
 
-    if (response.success) {
-      Alert.alert("Login Successful", `Welcome, ${response.user.username}!`);
-      navigation.navigate('MainApp');
-    } else {
-      Alert.alert("Login Failed", response.error);
+      if (response.success) {
+        console.log("✅ Login successful:", response.user);
+
+        // ✅ Store user session in AsyncStorage
+        await AsyncStorage.setItem('loggedInUser', JSON.stringify(response.user));
+
+         // ✅ Retrieve saved profile picture for this user
+      const savedProfileImage = await AsyncStorage.getItem(`profileImage_${response.user.username}`);
+
+        Alert.alert("Login Successful", `Welcome, ${response.user.username}!`);
+        navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] }); // ✅ Prevent back navigation
+      } else {
+        console.warn("❌ Login Failed:", response.error);
+        Alert.alert("Login Failed", response.error);
+      }
+    } catch (error) {
+      console.error("❌ Login Error:", error);
+      Alert.alert("Error", "An unexpected error occurred. Please try again.");
     }
   };
 
