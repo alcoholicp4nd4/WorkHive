@@ -1,36 +1,28 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage'; // ✅ Import AsyncStorage
-import { styles } from '../Styles/styles';
 import { loginUser } from '../database/authDatabase';
+import { styles } from '../Styles/styles';
 
 const LoginScreen = ({ navigation }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
     try {
       console.log("🔹 Attempting login...");
-      const response = await loginUser(username, password);
+      const response = await loginUser(email, password);
 
       if (response.success) {
-        console.log("✅ Login successful:", response.user);
-
-        // ✅ Store user session in AsyncStorage
-        await AsyncStorage.setItem('loggedInUser', JSON.stringify(response.user));
-
-         // ✅ Retrieve saved profile picture for this user
-      const savedProfileImage = await AsyncStorage.getItem(`profileImage_${response.user.username}`);
-
-        Alert.alert("Login Successful", `Welcome, ${response.user.username}!`);
-        navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] }); // ✅ Prevent back navigation
+        console.log("✅ Login successful!");
+        Alert.alert("Login Successful", `Welcome, ${response.user.email}!`);
+        navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
       } else {
-        console.warn("❌ Login Failed:", response.error);
+        console.warn("❌ Error:", response.error);
         Alert.alert("Login Failed", response.error);
       }
     } catch (error) {
       console.error("❌ Login Error:", error);
-      Alert.alert("Error", "An unexpected error occurred. Please try again.");
+      Alert.alert("Error", "An unexpected error occurred.");
     }
   };
 
@@ -39,9 +31,9 @@ const LoginScreen = ({ navigation }) => {
       <Text style={styles.title}>Login</Text>
       <TextInput
         style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
       />
       <TextInput
         style={styles.input}
@@ -51,7 +43,7 @@ const LoginScreen = ({ navigation }) => {
         onChangeText={setPassword}
       />
       <Button title="Login" onPress={handleLogin} />
-      <Button title="Go to Register" onPress={() => navigation.navigate('Register')} />
+      <Button title="Register" onPress={() => navigation.navigate('Register')} />
     </View>
   );
 };

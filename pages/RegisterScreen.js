@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, Button, Alert } from 'react-native';
-import { styles } from '../Styles/styles';
 import { registerUser } from '../database/authDatabase';
+import { styles } from '../Styles/styles';
 
 const RegisterScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -9,24 +9,22 @@ const RegisterScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
 
   const handleRegister = async () => {
-    if (!username || !email || !password) {
-      Alert.alert("Error", "All fields are required.");
-      return;
-    }
-
+    console.log("🔹 Attempting registration...");
     const response = await registerUser(username, email, password);
-    
+
     if (response.success) {
-      Alert.alert("Registration Successful", "You can now log in.");
-      navigation.navigate('Login');
+      console.log("✅ Registration successful:", response.user);
+      Alert.alert("Account Created", `Welcome, ${email}!`);
+      navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
     } else {
+      console.warn("❌ Registration Error:", response.error);
       Alert.alert("Registration Failed", response.error);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Register</Text>
+      <Text style={styles.title}>Create an Account</Text>
       <TextInput
         style={styles.input}
         placeholder="Username"
@@ -47,7 +45,7 @@ const RegisterScreen = ({ navigation }) => {
         onChangeText={setPassword}
       />
       <Button title="Register" onPress={handleRegister} />
-      <Button title="Back to Login" onPress={() => navigation.goBack()} />
+      <Button title="Already have an account? Login" onPress={() => navigation.navigate('Login')} />
     </View>
   );
 };

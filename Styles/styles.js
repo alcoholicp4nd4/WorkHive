@@ -6,6 +6,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    // For web you can ensure full viewport height if needed:
+    // height: '100vh',
   },
   title: {
     fontSize: 24,

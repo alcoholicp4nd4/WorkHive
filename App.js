@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { getAllUsers, initDB } from './database/authDatabase'; // Import async database initialization
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Platform } from 'react-native';
+import * as Linking from 'expo-linking';
+import { getCurrentUser } from './database/authDatabase';
 
 import LoginScreen from './pages/LoginScreen';
 import RegisterScreen from './pages/RegisterScreen';
@@ -15,7 +16,26 @@ import ProfileScreen from './pages/ProfileScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Tab Navigator for the main app (after login)
+// ✅ Configuration de linking pour le Web
+const linking = {
+  prefixes: [Linking.createURL('/')],
+  config: {
+    screens: {
+      Login: 'login',
+      Register: 'register',
+      MainApp: {
+        screens: {
+          Home: 'home',
+          Favorite: 'favorite',
+          Search: 'search',
+          Profile: 'profile',
+        },
+      },
+    },
+  },
+};
+
+// ✅ Tab Navigator (Après connexion)
 function MainAppTabs() {
   return (
     <Tab.Navigator>
@@ -31,18 +51,20 @@ export default function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const setupDatabase = async () => {
-      await initDB();
-      await getAllUsers();
-      setLoading(false);
+    const checkUser = async () => {
+      const user = await getCurrentUser();
+      if (user) {
+        setLoading(false);
+      } else {
+        setLoading(false);
+      }
     };
-
-    setupDatabase();
+    checkUser();
   }, []);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', height: Platform.OS === 'web' ? '100vh' : '100%' }}>
         <ActivityIndicator size="large" color="#0000ff" />
         <Text>Initializing Database...</Text>
       </View>
@@ -50,7 +72,7 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer linking={linking}>
       <Stack.Navigator initialRouteName="Login" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />

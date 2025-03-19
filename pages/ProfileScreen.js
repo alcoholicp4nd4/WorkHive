@@ -2,6 +2,7 @@ import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert } fr
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uploadProfileImage, getCurrentUser, logoutUser, updateUserProfileImage } from '../database/authDatabase';
 import * as ImagePicker from 'expo-image-picker';
 import { Settings, Bell, CreditCard, Shield, CircleHelp as HelpCircle, LogOut, Camera } from 'lucide-react-native';
 
@@ -16,94 +17,80 @@ const menuItems = [
 export default function ProfileScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState(null);
-  const [profileImage, setProfileImage] = useState(null); // Store profile image
+  const [profileImage, setProfileImage] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // Load user data & profile image from AsyncStorage
   useEffect(() => {
     const fetchUserData = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem('loggedInUser');
-        if (storedUser) {
-          const parsedUser = JSON.parse(storedUser);
-          setUser(parsedUser);
-
-          // ✅ Load the saved profile image for this user
-          const savedProfileImage = await AsyncStorage.getItem(`profileImage_${parsedUser.username}`);
-          if (savedProfileImage) {
-            setProfileImage(savedProfileImage);
-          }
-        }
-      } catch (error) {
-        console.error("❌ Error fetching user data:", error);
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        setUser(currentUser);
+        setProfileImage(currentUser.profileImage || null);
       }
+      setLoading(false);
     };
     fetchUserData();
   }, []);
 
-  // Function to pick an image
   const pickImage = async () => {
-    if (!user) return; // Ensure user is loaded before proceeding
-
+    if (!user) return;
+  
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert("Permission Denied", "You need to allow access to photos to change profile picture.");
+      Alert.alert("Permission Denied", "You need to allow access to photos to change the profile picture.");
       return;
     }
-
+  
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ["image"], // Use array format to avoid deprecation warning
       allowsEditing: true,
       aspect: [1, 1],
       quality: 1,
     });
 
     if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-      await AsyncStorage.setItem(`profileImage_${user.username}`, result.assets[0].uri); // ✅ Save per user
+      setLoading(true);
+      const imageUrl = await uploadProfileImage(result.assets[0].uri, user.uid);
+      if (imageUrl) {
+        setProfileImage(imageUrl);
+
+        // ✅ Update Firestore user document with the new profile picture
+        await updateUserProfileImage(user.uid, imageUrl);
+
+        // ✅ Save it in local storage
+        if (Platform.OS === "web") {
+          localStorage.setItem(`profileImage_${user.username}`, imageUrl);
+        } else {
+          await AsyncStorage.setItem(`profileImage_${user.username}`, imageUrl);
+        }
+
+        Alert.alert("Success", "Profile picture updated!");
+      } else {
+        Alert.alert("Error", "Failed to update profile picture.");
+      }
+      setLoading(false);
     }
   };
-
-  // Function to logout
+  
   const handleLogout = async () => {
-    Alert.alert(
-      "Log Out",
-      "Are you sure you want to log out?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Log Out", 
-          onPress: async () => {
-            await AsyncStorage.removeItem('loggedInUser'); // ✅ Clear session, but keep profile images
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Login' }],
-            });
-          }
-        }
-      ]
-    );
+    await logoutUser();
+    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
   };
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        {/* ✅ Profile Picture */}
-        <TouchableOpacity onPress={pickImage}>
-          <Image
-            source={{ uri: profileImage || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&q=80&w=400' }}
-            style={styles.profileImage}
-          />
-          <View style={styles.cameraIcon}>
-            <Camera size={24} color="#fff" />
-          </View>
+        <TouchableOpacity onPress={pickImage} disabled={loading}>
+          <Image source={{ uri: profileImage || 'https://placehold.co/100' }} style={styles.profileImage} />
+          <View style={styles.cameraIcon}><Camera size={24} color="#fff" /></View>
         </TouchableOpacity>
-
-        {/* ✅ Show logged-in user's name & email */}
         <Text style={styles.name}>{user ? user.username : "Loading..."}</Text>
         <Text style={styles.email}>{user ? user.email : "Loading..."}</Text>
       </View>
 
-      {/* ✅ Restored Menu Buttons */}
+      {loading && <Text style={{ color: "white" }}>Uploading...</Text>}
+
+      {/* ✅ Menu Items */}
       <View style={styles.menuContainer}>
         {menuItems.map((item, index) => (
           <TouchableOpacity key={index} style={styles.menuItem}>
@@ -111,13 +98,13 @@ export default function ProfileScreen() {
             <Text style={styles.menuLabel}>{item.label}</Text>
           </TouchableOpacity>
         ))}
-
-        {/* ✅ Log Out Button */}
-        <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleLogout}>
-          <LogOut size={24} color="#D9534F" />
-          <Text style={[styles.menuLabel, { color: '#D9534F' }]}>Log Out</Text>
-        </TouchableOpacity>
       </View>
+
+      {/* ✅ Logout Button */}
+      <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleLogout}>
+        <LogOut size={24} color="#D9534F" />
+        <Text style={[styles.menuLabel, { color: '#D9534F' }]}>Log Out</Text>
+      </TouchableOpacity>
     </ScrollView>
   );
 }
