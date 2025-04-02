@@ -3,7 +3,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig'; 
-
+import { getCurrentUser } from '../database/authDatabase';
 const categories = [
   {
     id: 1,
@@ -51,6 +51,7 @@ const featuredProviders = [
 export default function HomeScreen() {
   const navigation = useNavigation(); // Initialize navigation
   const [providers, setProviders] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -68,6 +69,13 @@ export default function HomeScreen() {
     };
 
     fetchProviders();
+
+    const fetchUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
+  
   }, []);
 
   return (
@@ -103,10 +111,19 @@ export default function HomeScreen() {
         ) : (
           providers.map((provider) => (
             <TouchableOpacity
-              key={provider.id}
-              onPress={() => console.log('Clicked:', provider.username)}
-              style={styles.providerCard}
-            >
+            key={provider.uid}
+            style={styles.providerCard}
+            onPress={() => {
+              console.log("Tapped on provider:", provider.username); // ✅ debug
+              if (currentUser) {
+                navigation.navigate("Chat", {
+                  currentUserId: currentUser.uid,
+                  providerId: provider.uid,
+                });
+              }
+            }}
+          >
+
               
               <View style={styles.providerInfo}>
                 <Text style={styles.providerName}>{provider.username}</Text>
