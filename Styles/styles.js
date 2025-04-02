@@ -8,8 +8,8 @@ export const styles = StyleSheet.create({
   },
   videoBackground: {
     position: 'absolute',
-    width: '100%',
-    height: '200%',
+    width: '60%',
+    height: '60%',
     top: 0,
     left: 0,
   },
@@ -33,11 +33,11 @@ export const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 20,
-    color: '#fff',
+    color: 'black',
   },
   subtitle: {
     fontSize: 16,
-    color: '#ddd',
+    color: 'black',
     marginBottom: 20,
   },
   inputContainer: {
@@ -54,7 +54,7 @@ export const styles = StyleSheet.create({
     flex: 1,
     height: 40,
     paddingHorizontal: 10,
-    color: '#fff',
+    color: 'black',
   },
   button: {
     flexDirection: 'row',
@@ -84,8 +84,8 @@ export const styles = StyleSheet.create({
   },
   backgroundVideo: {
     position: 'absolute',
-    width: '100%',
-    height: '100%',
+    width: '50%',
+    height: '50%',
     top: 0,
     left: 0,
   }
