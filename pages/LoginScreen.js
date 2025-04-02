@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground 
+  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform 
 } from 'react-native';
+import FastImage from 'react-native-fast-image'; // Import FastImage
 import { Mail, Lock, ArrowRight } from 'lucide-react-native';
 import { loginUser } from '../database/authDatabase';
 import { styles } from '../Styles/styles';
@@ -39,84 +40,84 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <ImageBackground 
-      source={require('../assets/background.png')} 
-      style={styles.background} // Centering background via styles
-      resizeMode="cover"
-    >
+    <View style={styles.container}>
+      <FastImage 
+        source={require('../assets/animated-background.gif')} 
+        style={styles.background} 
+        resizeMode={FastImage.resizeMode.cover}
+      />
+
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
+        style={styles.content}
       >
-        <View style={styles.content}>
-          <View style={styles.logoContainer}>
-            <Image 
-              source={require('../assets/favicon.png')}
-              style={styles.logo} // Centering logo via styles
-              resizeMode="contain"
+        <View style={styles.logoContainer}>
+          <Image 
+            source={require('../assets/favicon.png')}
+            style={styles.logo} 
+            resizeMode="contain"
+          />
+        </View>
+        
+        <Text style={styles.title}>Welcome back</Text>
+        <Text style={styles.subtitle}>Sign in to your account to continue</Text>
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Mail size={20} color="#B78BFA" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email address"
+              value={email}
+              onChangeText={setEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor="#B78BFA"
             />
           </View>
-          
-          <Text style={styles.title}>Welcome back</Text>
-          <Text style={styles.subtitle}>Sign in to your account to continue</Text>
 
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={styles.form}>
-            <View style={styles.inputContainer}>
-              <Mail size={20} color="#B78BFA" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Email address"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-                placeholderTextColor="#B78BFA"
-              />
-            </View>
-
-            <View style={styles.inputContainer}>
-              <Lock size={20} color="#B78BFA" style={styles.inputIcon} />
-              <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-                placeholderTextColor="#B78BFA"
-              />
-            </View>
-
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Forgot password?</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.button, loading && styles.buttonDisabled]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color="#ffffff" />
-              ) : (
-                <>
-                  <Text style={styles.buttonText}>Sign In</Text>
-                  <ArrowRight size={20} color="#ffffff" />
-                </>
-              )}
-            </TouchableOpacity>
+          <View style={styles.inputContainer}>
+            <Lock size={20} color="#B78BFA" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              placeholderTextColor="#B78BFA"
+            />
           </View>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.footerLink}>Sign up</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={styles.forgotPasswordText}>Forgot password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.button, loading && styles.buttonDisabled]}
+            onPress={handleLogin}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <>
+                <Text style={styles.buttonText}>Sign In</Text>
+                <ArrowRight size={20} color="#ffffff" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Don't have an account?</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+            <Text style={styles.footerLink}>Sign up</Text>
+          </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 };
 

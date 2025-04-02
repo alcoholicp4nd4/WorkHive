@@ -8,14 +8,7 @@ export const styles = StyleSheet.create({
     backgroundColor:'#EAE2F8',
     borderRadius:8,
     height:'60%',
-  },
-  background: {
-    flex: 1,
-    resizeMode: 'cover',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  
+  }, 
   logoContainer: {
     alignItems: 'center',
     marginBottom: 20,
@@ -61,5 +54,12 @@ export const styles = StyleSheet.create({
   cardText: {
     fontSize: 14,
     color: 'gray',
-  }
+  },
+  background: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+  },
 });
