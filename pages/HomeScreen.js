@@ -1,5 +1,9 @@
 import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useEffect, useState } from 'react';
+import { collection, getDocs, query, where } from 'firebase/firestore';
+import { db } from '../database/firebaseConfig'; 
+
 const categories = [
   {
     id: 1,
@@ -46,6 +50,25 @@ const featuredProviders = [
 
 export default function HomeScreen() {
   const navigation = useNavigation(); // Initialize navigation
+  const [providers, setProviders] = useState([]);
+
+  useEffect(() => {
+    const fetchProviders = async () => {
+      try {
+        const q = query(collection(db, "users"), where("isProvider", "==", true));
+        const snapshot = await getDocs(q);
+        const fetched = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setProviders(fetched);
+      } catch (err) {
+        console.error("❌ Firestore fetch error:", err);
+      }
+    };
+
+    fetchProviders();
+  }, []);
 
   return (
     <ScrollView style={styles.container}>
@@ -75,22 +98,26 @@ export default function HomeScreen() {
 
       <View style={styles.featuredSection}>
         <Text style={styles.sectionTitle}>Featured Providers</Text>
-        {featuredProviders.map((provider) => (
-          <TouchableOpacity
-            key={provider.id}
-            onPress={() => navigation.navigate('Provider', { id: provider.id })} // Use navigation.navigate
-            style={styles.providerCard}
-          >
-            <Image source={{ uri: provider.image }} style={styles.providerImage} />
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{provider.name}</Text>
-              <Text style={styles.providerService}>{provider.service}</Text>
-              <View style={styles.ratingContainer}>
-                <Text style={styles.rating}>★ {provider.rating}</Text>
+        {providers.length === 0 ? (
+          <Text>No providers found.</Text>
+        ) : (
+          providers.map((provider) => (
+            <TouchableOpacity
+              key={provider.id}
+              onPress={() => console.log('Clicked:', provider.username)}
+              style={styles.providerCard}
+            >
+              
+              <View style={styles.providerInfo}>
+                <Text style={styles.providerName}>{provider.username}</Text>
+                <Text style={styles.providerService}>Service Provider</Text>
+                <View style={styles.ratingContainer}>
+                  <Text style={styles.rating}>★ 5.0</Text>
+                </View>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
+            </TouchableOpacity>
+          ))
+        )}
       </View>
     </ScrollView>
   );

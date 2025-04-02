@@ -16,7 +16,7 @@ import ProfileScreen from './pages/ProfileScreen';
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// ✅ Configuration de linking pour le Web
+// ✅ Web Deep Linking Setup
 const linking = {
   prefixes: [Linking.createURL('/')],
   config: {
@@ -29,13 +29,13 @@ const linking = {
           Favorite: 'favorite',
           Search: 'search',
           Profile: 'profile',
+          Chat: 'chat',
         },
       },
     },
   },
 };
 
-// ✅ Tab Navigator (Après connexion)
 function MainAppTabs() {
   return (
     <Tab.Navigator>
@@ -52,13 +52,15 @@ export default function App() {
 
   useEffect(() => {
     const checkUser = async () => {
-      const user = await getCurrentUser();
-      if (user) {
-        setLoading(false);
-      } else {
+      try {
+        await getCurrentUser(); // No need to store result unless used
+      } catch (err) {
+        console.error("⚠️ Error fetching user:", err);
+      } finally {
         setLoading(false);
       }
     };
+
     checkUser();
   }, []);
 
@@ -66,7 +68,7 @@ export default function App() {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', height: Platform.OS === 'web' ? '100vh' : '100%' }}>
         <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Initializing Database...</Text>
+        <Text>Initializing App...</Text>
       </View>
     );
   }
