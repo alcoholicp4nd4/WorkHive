@@ -5,7 +5,6 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, ActivityIndicator, Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { getCurrentUser } from './database/authDatabase';
-
 import LoginScreen from './pages/LoginScreen';
 import RegisterScreen from './pages/RegisterScreen';
 import HomeScreen from './pages/HomeScreen';
