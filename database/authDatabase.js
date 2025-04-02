@@ -1,26 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
-import { getFirestore, collection, addDoc, getDocs, query, where } from "firebase/firestore";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-
-// ✅ Firebase Configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyAJKjIHKiZmHxg9MYviBpKdBupSF5Qz_1E",
-  authDomain: "workhive-46464.firebaseapp.com",
-  projectId: "workhive-46464",
-  storageBucket: "workhive-46464.appspot.com",
-  messagingSenderId: "292232767053",
-  appId: "1:292232767053:web:84bbaa642a9d1c84e99e04",
-  measurementId: "G-GDW5NNKZ8S"
-};
-
-// ✅ Initialiser Firebase
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { collection, addDoc, getDocs, query, where, doc, updateDoc } from "firebase/firestore";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { auth, db, storage } from './firebaseConfig';
 
 // ✅ Fonction pour enregistrer un utilisateur
 export const registerUser = async (username, email, password) => {
@@ -28,15 +11,19 @@ export const registerUser = async (username, email, password) => {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // 🔹 Ajouter l'utilisateur à Firestore
-    await addDoc(collection(db, "users"), {
+    // 🔹 Créer les données utilisateur avec isProvider: false
+    const userData = {
       uid: user.uid,
       username: username,
       email: email,
-    });
+      isProvider: false,
+    };
+
+    // 🔹 Ajouter l'utilisateur à Firestore
+    await addDoc(collection(db, "users"), userData);
+    console.log("✅ User created:", userData);
 
     // 🔹 Stocker la session utilisateur
-    const userData = { uid: user.uid, username, email };
     if (Platform.OS === "web") {
       localStorage.setItem("loggedInUser", JSON.stringify(userData));
     } else {
@@ -101,6 +88,11 @@ export const logoutUser = async () => {
   }
 };
 
+export const updateUserToProvider = async (uid) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, { isProvider: true });
+};
+
 // ✅ Fonction pour sauvegarder une image de profil
 export const uploadProfileImage = async (uri, userId) => {
   try {
@@ -114,4 +106,9 @@ export const uploadProfileImage = async (uri, userId) => {
     console.error("❌ Error uploading image:", error);
     return null;
   }
+};
+
+export const updateUserProfileImage = async (uid, imageUrl) => {
+  const userRef = doc(db, "users", uid);
+  await updateDoc(userRef, { profileImage: imageUrl });
 };
