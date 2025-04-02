@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { Search as SearchIcon, MapPin } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import L from 'leaflet'; // Importing leaflet for web maps
 
 // Sample data for service providers
 const allProviders = [
@@ -25,7 +24,7 @@ const allProviders = [
     location: {
       latitude: 37.78825,
       longitude: -122.4324,
-      address: 'San Francisco, CA',
+      address: 'San Francisco, CA'
     },
     distance: 0, // Will be calculated
   },
@@ -38,41 +37,61 @@ const allProviders = [
     location: {
       latitude: 37.78525,
       longitude: -122.4354,
-      address: 'San Francisco, CA',
+      address: 'San Francisco, CA'
     },
     distance: 0, // Will be calculated
   },
-  // More providers...
+  {
+    id: 3,
+    name: 'Emma Rodriguez',
+    service: 'Hair Stylist',
+    rating: 4.7,
+    image: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?auto=format&fit=crop&q=80&w=400',
+    location: {
+      latitude: 37.78925,
+      longitude: -122.4344,
+      address: 'San Francisco, CA'
+    },
+    distance: 0, // Will be calculated
+  },
+  {
+    id: 4,
+    name: 'David Kim',
+    service: 'Plumber',
+    rating: 4.6,
+    image: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&q=80&w=400',
+    location: {
+      latitude: 37.78625,
+      longitude: -122.4334,
+      address: 'San Francisco, CA'
+    },
+    distance: 0, // Will be calculated
+  },
 ];
 
 // Web-compatible map placeholder component
-const WebMapPlaceholder = ({ location, providers }) => {
-  useEffect(() => {
-    const map = L.map('webMap', {
-      center: [location?.coords.latitude, location?.coords.longitude],
-      zoom: 13,
-    });
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
-    providers.forEach(provider => {
-      L.marker([provider.location.latitude, provider.location.longitude])
-        .bindPopup(
-          `<b>${provider.name}</b><br/>${provider.service}<br/>${provider.location.address}<br/>${provider.distance.toFixed(1)} km`
-        )
-        .addTo(map);
-    });
-  }, [location, providers]);
-
-  return (
-    <View style={styles.webMapPlaceholder}>
-      <div id="webMap" style={{ width: '100%', height: '100%' }}></div>
+const WebMapPlaceholder = ({ location, providers }) => (
+  <View style={styles.webMapPlaceholder}>
+    <View style={styles.webMapContent}>
+      <MapPin size={40} color="#CB9DF0" />
+      <Text style={styles.webMapTitle}>Map View</Text>
+      <Text style={styles.webMapText}>
+        Interactive maps are available on mobile devices.
+      </Text>
       <Text style={styles.webMapCoords}>
         Your coordinates: {location?.coords.latitude.toFixed(4)}, {location?.coords.longitude.toFixed(4)}
       </Text>
+      <View style={styles.webMapProviders}>
+        <Text style={styles.webMapProvidersTitle}>Nearby Providers:</Text>
+        {providers.slice(0, 3).map(provider => (
+          <Text key={provider.id} style={styles.webMapProviderItem}>
+            • {provider.name} ({provider.distance.toFixed(1)} km)
+          </Text>
+        ))}
+      </View>
     </View>
-  );
-};
+  </View>
+);
 
 export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -82,6 +101,7 @@ export default function Search() {
   const [providers, setProviders] = useState([]);
   const [showMap, setShowMap] = useState(false);
 
+  // Calculate distance between two coordinates in kilometers
   const calculateDistance = (lat1, lon1, lat2, lon2) => {
     const R = 6371; // Radius of the earth in km
     const dLat = deg2rad(lat2 - lat1);
@@ -113,6 +133,7 @@ export default function Search() {
       setLocation(location);
       setLocationStatus('success');
       
+      // Calculate distance for each provider
       const providersWithDistance = allProviders.map(provider => {
         const distance = calculateDistance(
           location.coords.latitude,
@@ -123,6 +144,7 @@ export default function Search() {
         return { ...provider, distance };
       });
       
+      // Sort providers by distance
       const sortedProviders = providersWithDistance.sort((a, b) => a.distance - b.distance);
       setProviders(sortedProviders);
     } catch (error) {
@@ -131,6 +153,7 @@ export default function Search() {
         ? 'Location services may be restricted in your browser. Try enabling location permissions.'
         : 'Could not get your location');
       setLocationStatus('error');
+      // Use unsorted providers as fallback
       setProviders(allProviders);
     }
   };
@@ -224,7 +247,15 @@ export default function Search() {
       )}
 
       {locationStatus === 'success' && showMap && location && (
-        <WebMapPlaceholder location={location} providers={filteredProviders} />
+        Platform.OS === 'web' ? (
+          <WebMapPlaceholder location={location} providers={filteredProviders} />
+        ) : (
+          // This code will only run on native platforms
+          // We're not importing MapView here to avoid the web error
+          <View style={styles.mapContainer}>
+            <Text>Map view is only available on native platforms</Text>
+          </View>
+        )
       )}
     </View>
   );
@@ -352,24 +383,86 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 8,
   },
   rating: {
     fontSize: 14,
     color: '#333',
+    fontWeight: '500',
   },
   distance: {
-    fontSize: 14,
-    color: '#CB9DF0',
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
   },
+  mapContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  map: {
+    width: '100%',
+    height: '100%',
+  },
+  // Web map placeholder styles
   webMapPlaceholder: {
     flex: 1,
-    height: 400,
     backgroundColor: '#f5f5f5',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
   },
-  webMapCoords: {
-    padding: 10,
-    fontSize: 14,
+  webMapContent: {
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    padding: 25,
+    width: '100%',
+    maxWidth: 500,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  webMapTitle: {
+    fontSize: 22,
+    fontWeight: '600',
+    marginTop: 15,
+    marginBottom: 10,
     color: '#333',
   },
-});
+  webMapText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  webMapCoords: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 20,
+    padding: 10,
+    backgroundColor: '#f9f9f9',
+    borderRadius: 8,
+    width: '100%',
+    textAlign: 'center',
+  },
+  webMapProviders: {
+    width: '100%',
+    backgroundColor: '#F0C1E1',
+    padding: 15,
+    borderRadius: 10,
+  },
+  webMapProvidersTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
+  },
+  webMapProviderItem: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 5,
+  }
+}); 
