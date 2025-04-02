@@ -2,13 +2,24 @@ import { StyleSheet } from 'react-native';
 
 export const styles = StyleSheet.create({
   container: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    // For web you can ensure full viewport height if needed:
-    // height: '100vh',
+    backgroundColor:'#EAE2F8',
+    borderRadius:8,
+    height:'60%',
   },
+  background: {
+    flex: 1,
+    resizeMode: 'cover',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },  
   title: {
     fontSize: 24,
     fontWeight: 'bold',
