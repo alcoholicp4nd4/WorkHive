@@ -1,8 +1,11 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig'; 
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground } from 'react-native';
+
+const headerImage = { uri: 'https://www.cisco.com/content/dam/cisco-cdc/site/images/heroes/learn/ccnp-service-provider-hero-banner-3200x1312.jpg' };
+
 
 const categories = [
   {
@@ -72,10 +75,10 @@ export default function HomeScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.greeting}>Hello, User! 👋</Text>
+      <ImageBackground source={headerImage} style={styles.header} resizeMode="cover">
+        <Text style={styles.greeting}>Our service providers got it from here</Text>
         <Text style={styles.subtitle}>Find the perfect service provider</Text>
-      </View>
+  </ImageBackground>
 
       <View style={styles.categoriesSection}>
         <Text style={styles.sectionTitle}>Categories</Text>
@@ -124,26 +127,28 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  headerContainer: {
+    overflow: 'hidden',
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#CB9DF0',
+    height: 400,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
   },
   greeting: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#fff',
     marginTop: 5,
+    textAlign: 'center',
   },
-  categoriesSection: {
+ categoriesSection: {
     padding: 20,
   },
   sectionTitle: {
