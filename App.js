@@ -11,6 +11,9 @@ import HomeScreen from './pages/HomeScreen';
 import FavoriteScreen from './pages/FavoriteScreen';
 import SearchScreen from './pages/SearchScreen';
 import ProfileScreen from './pages/ProfileScreen';
+import ChatScreen from './pages/ChatScreen';
+import ChatsScreen from './pages/chats';
+
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -42,7 +45,8 @@ function MainAppTabs() {
       <Tab.Screen name="Favorite" component={FavoriteScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
-    </Tab.Navigator>
+      <Tab.Screen name="Chats" component={ChatsScreen} />    
+      </Tab.Navigator>
   );
 }
 
@@ -78,7 +82,9 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
-      </Stack.Navigator>
+        <Stack.Screen name="Chat" component={ChatScreen} />
+        <Stack.Screen name="Chats" component={ChatsScreen} />
+        </Stack.Navigator>
     </NavigationContainer>
   );
 }

@@ -1,13 +1,12 @@
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../database/firebaseConfig'; 
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground, TextInput } from 'react-native';
+import { db } from '../database/firebaseConfig';
+import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
 
 
 const headerImage = { uri: 'https://www.cisco.com/content/dam/cisco-cdc/site/images/heroes/learn/ccnp-service-provider-hero-banner-3200x1312.jpg' };
-
-
 const categories = [
   {
     id: 1,
@@ -142,11 +141,10 @@ const featuredProviders = [
     image: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
   },
 ];
-
 export default function HomeScreen() {
   const navigation = useNavigation(); // Initialize navigation
   const [providers, setProviders] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -164,24 +162,21 @@ export default function HomeScreen() {
     };
 
     fetchProviders();
+
+    const fetchUser = async () => {
+      const user = await getCurrentUser();
+      setCurrentUser(user);
+    };
+    fetchUser();
+  
   }, []);
 
   return (
     <ScrollView style={styles.container}>
-      {/* Header Section */}
       <ImageBackground source={headerImage} style={styles.header} resizeMode="cover">
-        <View style={styles.headerContainer}>
-          <Text style={styles.greeting}>Our service providers got it from here</Text>
-          <Text style={styles.subtitle}>Find the perfect service provider</Text>
-          <TextInput
-            style={styles.searchBar}
-            placeholder="Search services..."
-            placeholderTextColor="#666"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </ImageBackground>
+        <Text style={styles.greeting}>Our service providers got it from here</Text>
+        <Text style={styles.subtitle}>Find the perfect service provider</Text>
+  </ImageBackground>
 
       <View style={styles.categoriesSection}>
         <Text style={styles.sectionTitle}>Categories</Text>
@@ -209,10 +204,19 @@ export default function HomeScreen() {
         ) : (
           providers.map((provider) => (
             <TouchableOpacity
-              key={provider.id}
-              onPress={() => console.log('Clicked:', provider.username)}
-              style={styles.providerCard}
-            >
+            key={provider.uid}
+            style={styles.providerCard}
+            onPress={() => {
+              console.log("Tapped on provider:", provider.username); // ✅ debug
+              if (currentUser) {
+                navigation.navigate("Chat", {
+                  currentUserId: currentUser.uid,
+                  providerId: provider.uid,
+                });
+              }
+            }}
+          >
+
               
               <View style={styles.providerInfo}>
                 <Text style={styles.providerName}>{provider.username}</Text>
@@ -232,7 +236,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   headerContainer: {
     overflow: 'hidden',
-    alignItems: 'flex-start',
   },
   header: {
     height: 400,
@@ -244,25 +247,15 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#fff',
-    textAlign: 'left',
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#fff',
     marginTop: 5,
-    textAlign: 'left',
+    textAlign: 'center',
   },
-  searchBar: {
-    marginTop: 10,
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    height: 40,
-    width: '100%',
-    paddingHorizontal: 15,
-    fontSize: 16,
-    color: '#333',
-  },
-  categoriesSection: {
+ categoriesSection: {
     padding: 20,
   },
   sectionTitle: {
@@ -299,52 +292,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-  },
-  categoryCount: {
-    fontSize: 13,
-    color: '#666',
-    marginTop: 2,
-  },
-  featuredSection: {
-    padding: 20,
-  },
-  providerCard: {
-    flexDirection: 'row',
-    backgroundColor: '#F0C1E1',
-    borderRadius: 15,
-    marginBottom: 15,
-    overflow: 'hidden',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  providerImage: {
-    width: 100,
-    height: 100,
-  },
-  providerInfo: {
-    flex: 1,
-    padding: 15,
-  },
-  providerName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-  },
-  providerService: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 4,
-  },
-  ratingContainer: {
-    marginTop: 8,
-  },
-  rating: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
   },
   categoryCount: {
     fontSize: 13,
