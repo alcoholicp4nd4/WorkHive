@@ -14,6 +14,7 @@ import SearchScreen from './pages/SearchScreen';
 import ProfileScreen from './pages/ProfileScreen';
 import ChatScreen from './pages/ChatScreen';
 import ChatsScreen from './pages/chats';
+import AdminDashboard from './pages/AdminDashboard';
 
 
 const Stack = createStackNavigator();
@@ -85,6 +86,7 @@ export default function App() {
         <Stack.Screen name="MainApp" component={MainAppTabs} />
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Chats" component={ChatsScreen} />
+        <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         </Stack.Navigator>
     </NavigationContainer>
   );

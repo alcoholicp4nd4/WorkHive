@@ -1,7 +1,14 @@
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../database/firebaseConfig'; 
+import { db } from '../database/firebaseConfig';
+import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
+
+const headerImage = {
+  uri: 'https://www.cisco.com/content/dam/cisco-cdc/site/images/heroes/learn/cisco-hero.png',
+};
+
 
 const categories = [
   {
