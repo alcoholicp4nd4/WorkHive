@@ -17,7 +17,9 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    height: '100%',
+    height: '60%',
+    backgroundColor: '#EAE2F8',
+    borderRadius:8
   },
   content: {
     alignItems: 'center',
@@ -80,4 +82,11 @@ export const styles = StyleSheet.create({
     color: '#B78BFA',
     marginLeft: 5,
   },
+  backgroundVideo: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    top: 0,
+    left: 0,
+  }
 });
