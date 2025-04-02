@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
-  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ImageBackground 
+  View, Text, TextInput, TouchableOpacity, Image, Alert, ActivityIndicator, KeyboardAvoidingView, Platform 
 } from 'react-native';
 import { Mail, Lock, ArrowRight } from 'lucide-react-native';
+import { Video } from 'expo-av';
 import { loginUser } from '../database/authDatabase';
 import { styles } from '../Styles/styles';
 
@@ -11,6 +12,7 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const videoRef = useRef(null);
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -39,11 +41,18 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <ImageBackground 
-      source={require('../assets/background.png')} 
-      style={styles.background} // Centering background via styles
-      resizeMode="cover"
-    >
+    <View style={styles.background}>
+      {/* 🎥 Animated Background Video */}
+      <Video
+        ref={videoRef}
+        source={require('../assets/animated-background.mp4')} // Place this MP4 inside assets folder
+        style={styles.videoBackground}
+        resizeMode="cover"
+        shouldPlay
+        isLooping
+        muted
+      />
+
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
@@ -116,7 +125,7 @@ const LoginScreen = ({ navigation }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
-    </ImageBackground>
+    </View>
   );
 };
 
