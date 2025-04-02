@@ -28,8 +28,15 @@ const LoginScreen = ({ navigation }) => {
       if (response.success) {
         console.log("✅ Login successful!");
         Alert.alert("Login Successful", `Welcome, ${response.user.email}!`);
-        navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
-      } else {
+      
+        if (response.isAdmin) {
+          navigation.reset({ index: 0, routes: [{ name: 'AdminDashboard' }] });
+        } else {
+          navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
+        }
+      }
+      
+       else {
         console.warn("❌ Error:", response.error);
         setError(response.error);
       }
@@ -42,10 +49,9 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <View style={styles.background}>
-      {/* 🎥 Animated Background Video */}
       <Video
         ref={videoRef}
-        source={require('../assets/animated-background.mp4')} // Place this MP4 inside assets folder
+        source={require('../assets/animated-background.mp4')}
         style={styles.videoBackground}
         resizeMode="cover"
         shouldPlay
@@ -61,7 +67,7 @@ const LoginScreen = ({ navigation }) => {
           <View style={styles.logoContainer}>
             <Image 
               source={require('../assets/favicon.png')}
-              style={styles.logo} // Centering logo via styles
+              style={styles.logo}
               resizeMode="contain"
             />
           </View>
