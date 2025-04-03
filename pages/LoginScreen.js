@@ -51,7 +51,7 @@ const LoginScreen = ({ navigation }) => {
     <View style={styles.background}>
       <Video
         ref={videoRef}
-        source={require('../assets/animated-background.mp4')}
+        source={require('../assets/animated-background2.mp4')}
         style={styles.videoBackground}
         resizeMode="cover"
         shouldPlay
@@ -59,7 +59,7 @@ const LoginScreen = ({ navigation }) => {
         muted
       />
 
-      <KeyboardAvoidingView 
+      <View 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.container}
       >
@@ -130,7 +130,7 @@ const LoginScreen = ({ navigation }) => {
             </TouchableOpacity>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </View>
   );
 };

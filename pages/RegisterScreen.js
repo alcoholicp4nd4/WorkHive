@@ -38,7 +38,7 @@ const RegisterScreen = ({ navigation }) => {
   return (
     <View style={styles.background}>
       <Video
-        source={require('../assets/animated-background.mp4')}
+        source={require('../assets/animated-background2.mp4')}
         style={styles.backgroundVideo}
         shouldPlay
         isLooping

@@ -12,15 +12,14 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     height: '100%',
-    rotation: 90
   },
   container: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    height: '60%',
+    height: 500,
     backgroundColor: '#EAE2F8',
-    borderRadius:8
+    borderRadius:10
   },
   content: {
     alignItems: 'center',
