@@ -148,25 +148,34 @@ export default function ChatsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#f1f5f9', // Lighter background for a clean look
+    paddingBottom: 10, // Adds some space at the bottom
   },
   header: {
     backgroundColor: '#ffffff',
-    padding: 16,
-    paddingTop: 60,
+    padding: 20,
+    paddingTop: 60, // More padding at the top for header space
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0', // Lighter separator
   },
   title: {
-    fontSize: 28,
-    fontFamily: 'Inter_600SemiBold',
-    color: '#0f172a',
+    fontSize: 30, // Larger font for the title
+    fontFamily: 'Inter_600SemiBold', // Modern font style
+    color: '#0f172a', // Darker color for better contrast
     marginBottom: 16,
+    textAlign: 'center', // Center the title
   },
   chatItem: {
     flexDirection: 'row',
     padding: 16,
     backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
+    borderRadius: 10, // Rounded corners for each chat item
+    marginVertical: 8, // Add margin for spacing between items
+    shadowColor: '#000', // Add subtle shadow for depth
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4, // For Android shadow effect
   },
   chatInfo: {
     flex: 1,
@@ -174,17 +183,17 @@ const styles = StyleSheet.create({
   chatHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 4,
+    marginBottom: 6, // Adjust space between name and time
   },
   chatName: {
-    fontSize: 16,
-    fontFamily: 'Inter_500Medium',
-    color: '#0f172a',
+    fontSize: 18, // Slightly larger font for name
+    fontFamily: 'Inter_600SemiBold',
+    color: '#1f2937', // Dark text color for readability
   },
   chatTime: {
     fontSize: 14,
     fontFamily: 'Inter_400Regular',
-    color: '#94a3b8',
+    color: '#94a3b8', // Lighter text for time
   },
   chatFooter: {
     flexDirection: 'row',
@@ -193,23 +202,27 @@ const styles = StyleSheet.create({
   },
   lastMessage: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 15, // Slightly larger font for last message
     fontFamily: 'Inter_400Regular',
     color: '#64748b',
-    marginRight: 8,
+    marginRight: 10,
+    lineHeight: 20, // Adds space between lines
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f1f5f9', // Light background to match the page
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#f1f5f9',
   },
   errorText: {
     fontSize: 16,
     color: 'red',
+    fontFamily: 'Inter_500Medium', // Make error text slightly bolder
   },
 });

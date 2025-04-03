@@ -63,7 +63,7 @@ export default function ChatScreen() {
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <View style={[styles.messageContainer, item.senderId === currentUserId ? styles.myMessage : styles.otherMessage]}>
-            <Text>{item.text}</Text>
+            <Text style={styles.messageText}>{item.text}</Text>
           </View>
         )}
       />
@@ -74,7 +74,7 @@ export default function ChatScreen() {
           style={styles.input}
           placeholder="Type a message..."
         />
-        <Button title="Send" onPress={handleSend} />
+        <Button title="Send" style={styles.Button} onPress={handleSend} />
       </View>
     </View>
   );
@@ -82,7 +82,9 @@ export default function ChatScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, backgroundColor: '#fff', padding: 10
+    flex: 1, 
+    backgroundColor: '#EAE2F8', 
+    padding: 10
   },
   messageContainer: {
     padding: 10,
@@ -91,26 +93,34 @@ const styles = StyleSheet.create({
     maxWidth: '80%',
   },
   myMessage: {
-    backgroundColor: '#DCF8C6',
+    backgroundColor: '#B78BFA',
     alignSelf: 'flex-end',
   },
   otherMessage: {
-    backgroundColor: '#ECECEC',
+    backgroundColor: '#F4A400',
     alignSelf: 'flex-start',
+  },
+  messageText: {
+    color: '#2D0A59', // Dark Purple for text
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
+    borderTopColor: '#B78BFA',
     padding: 8
   },
   input: {
     flex: 1,
-    borderColor: '#ccc',
+    borderColor: '#B78BFA',
     borderWidth: 1,
     borderRadius: 20,
     paddingHorizontal: 15,
-    marginRight: 8
+    marginRight: 8,
+    backgroundColor: '#FFFFFF'
+  },
+  Button:{
+    borderRadius: 8,
+    color: 'green'
   }
 });
