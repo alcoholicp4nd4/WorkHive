@@ -6,7 +6,7 @@ import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
 
 
-const headerImage = { uri: 'https://www.cisco.com/content/dam/cisco-cdc/site/images/heroes/learn/ccnp-service-provider-hero-banner-3200x1312.jpg' };
+const headerImage = { uri: 'https://www.shutterstock.com/image-photo/happy-mid-aged-business-woman-600nw-2353012835.jpg' };
 const categories = [
   {
     id: 1,
