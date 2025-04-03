@@ -123,7 +123,6 @@ export default function ProfileScreen() {
 
       {loading && <Text style={{ color: 'white' }}>Uploading...</Text>}
 
-
       {/* Menu Items */}
       <View style={styles.menuContainer}>
         {menuItems.map((item, index) => (
@@ -133,6 +132,13 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Navigate to Add Service Screen */}
+      <TouchableOpacity
+        style={[styles.menuItem, { backgroundColor: '#A9D1F7' }]}
+        onPress={() => navigation.navigate('AddServiceScreen')}>
+        <Text style={styles.menuLabel}>Add Service</Text>
+      </TouchableOpacity>
 
       {/* Logout Button */}
       <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleLogout}>

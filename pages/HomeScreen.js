@@ -1,8 +1,8 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../database/firebaseConfig'; 
+import { db } from '../database/firebaseConfig';
 
 const categories = [
   {
@@ -31,47 +31,45 @@ const categories = [
   },
 ];
 
-const featuredProviders = [
-  {
-    id: 1,
-    name: 'Sarah Johnson',
-    service: 'Interior Designer',
-    rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400',
-  },
-  {
-    id: 2,
-    name: 'Michael Chen',
-    service: 'Personal Trainer',
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
-  },
-];
-
 export default function HomeScreen() {
   const navigation = useNavigation(); // Initialize navigation
-  const [providers, setProviders] = useState([]);
+  const [services, setServices] = useState([]);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Fetch services from Firestore
+  const fetchServices = async () => {
+    setIsRefreshing(true);
+    try {
+      // Query the Firestore services collection
+      const q = query(collection(db, 'services'));
+      const snapshot = await getDocs(q);
+      
+      // Map the fetched data to an array of services
+      const fetchedServices = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      
+      // Set the services in state
+      setServices(fetchedServices);
+    } catch (err) {
+      console.error('❌ Firestore fetch error:', err);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchProviders = async () => {
-      try {
-        const q = query(collection(db, "users"), where("isProvider", "==", true));
-        const snapshot = await getDocs(q);
-        const fetched = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setProviders(fetched);
-      } catch (err) {
-        console.error("❌ Firestore fetch error:", err);
-      }
-    };
-
-    fetchProviders();
+    fetchServices();
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      refreshControl={
+        <RefreshControl refreshing={isRefreshing} onRefresh={fetchServices} />
+      }
+    >
       <View style={styles.header}>
         <Text style={styles.greeting}>Hello, User! 👋</Text>
         <Text style={styles.subtitle}>Find the perfect service provider</Text>
@@ -83,7 +81,7 @@ export default function HomeScreen() {
           {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
-              onPress={() => navigation.navigate('Category', { id: category.id })} // Use navigation.navigate
+              onPress={() => navigation.navigate('Category', { id: category.id })}
               style={styles.categoryCard}
             >
               <Image source={{ uri: category.image }} style={styles.categoryImage} />
@@ -97,23 +95,25 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.featuredSection}>
-        <Text style={styles.sectionTitle}>Featured Providers</Text>
-        {providers.length === 0 ? (
-          <Text>No providers found.</Text>
+        <Text style={styles.sectionTitle}>Featured Services</Text>
+        {services.length === 0 ? (
+          <Text>No services found.</Text>
         ) : (
-          providers.map((provider) => (
+          services.map((service) => (
             <TouchableOpacity
-              key={provider.id}
-              onPress={() => console.log('Clicked:', provider.username)}
+              key={service.id}
+              onPress={() => {
+                navigation.navigate('ServiceDetails', {
+                  service: service, // Pass the full service data
+                });
+              }}
               style={styles.providerCard}
             >
-              
               <View style={styles.providerInfo}>
-                <Text style={styles.providerName}>{provider.username}</Text>
-                <Text style={styles.providerService}>Service Provider</Text>
-                <View style={styles.ratingContainer}>
-                  <Text style={styles.rating}>★ 5.0</Text>
-                </View>
+                <Text style={styles.providerName}>{service.username}</Text>
+                <Text style={styles.providerService}>{service.category}</Text>
+                <Text style={styles.providerDescription}>{service.serviceDescription}</Text>
+                <Text style={styles.providerDescription}>{service.providerDescription}</Text>
               </View>
             </TouchableOpacity>
           ))
@@ -201,10 +201,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  providerImage: {
-    width: 100,
-    height: 100,
-  },
   providerInfo: {
     flex: 1,
     padding: 15,
@@ -219,12 +215,9 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 4,
   },
-  ratingContainer: {
-    marginTop: 8,
-  },
-  rating: {
-    fontSize: 14,
+  providerDescription: {
+    fontSize: 12,
     color: '#333',
-    fontWeight: '500',
+    marginTop: 6,
   },
 });

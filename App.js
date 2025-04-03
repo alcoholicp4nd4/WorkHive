@@ -12,6 +12,8 @@ import HomeScreen from './pages/HomeScreen';
 import FavoriteScreen from './pages/FavoriteScreen';
 import SearchScreen from './pages/SearchScreen';
 import ProfileScreen from './pages/ProfileScreen';
+import AddServiceScreen from './pages/AddServiceScreen'; 
+import ServiceDetailsScreen from './pages/ServiceDetailsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -29,7 +31,7 @@ const linking = {
           Favorite: 'favorite',
           Search: 'search',
           Profile: 'profile',
-          Chat: 'chat',
+          AddService: 'addService', 
         },
       },
     },
@@ -53,7 +55,7 @@ export default function App() {
   useEffect(() => {
     const checkUser = async () => {
       try {
-        await getCurrentUser(); // No need to store result unless used
+        await getCurrentUser();
       } catch (err) {
         console.error("⚠️ Error fetching user:", err);
       } finally {
@@ -79,6 +81,8 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
+        <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} /> 
+        <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} /> 
       </Stack.Navigator>
     </NavigationContainer>
   );
