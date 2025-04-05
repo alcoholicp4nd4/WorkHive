@@ -465,4 +465,4 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 5,
   }
-});
+}); 

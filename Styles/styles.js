@@ -7,19 +7,19 @@ export const styles = StyleSheet.create({
     alignItems: 'center',
   },
   videoBackground: {
-    position: 'absolute',
-    width: '60%',
-    height: '60%',
-    top: 0,
-    left: 0,
+    position:"absolute",
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   },
   container: {
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    height: '60%',
+    height: 500,
     backgroundColor: '#EAE2F8',
-    borderRadius:8
+    borderRadius:10
   },
   content: {
     alignItems: 'center',
@@ -83,10 +83,10 @@ export const styles = StyleSheet.create({
     marginLeft: 5,
   },
   backgroundVideo: {
-    position: 'absolute',
-    width: '50%',
-    height: '50%',
-    top: 0,
-    left: 0,
+    position:"absolute",
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    height: '100%',
   }
 });
