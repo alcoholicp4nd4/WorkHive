@@ -10,6 +10,9 @@ import {
 import { Search as SearchIcon, MapPin } from 'lucide-react-native';
 import * as Location from 'expo-location';
 import MapView, { Marker, Circle } from 'react-native-maps';
+import Slider from '@react-native-community/slider';
+import { Picker } from '@react-native-picker/picker';
+
 
 // Sample data for service providers
 const allProviders = [
@@ -67,6 +70,8 @@ export default function Search() {
   const [searchQuery, setSearchQuery] = useState('');
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
+  const [price, setPrice] = useState(100); // Default price value
+  const [category, setCategory] = useState('All'); // Default category
   const [locationStatus, setLocationStatus] = useState('not-started');
   const [radius, setRadius] = useState(5); // Default radius for search (in km)
 
@@ -99,16 +104,57 @@ export default function Search() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <SearchIcon size={20} color="#666" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search services or providers..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
+  <View style={styles.searchContainer}>
+    <SearchIcon size={20} color="#666" style={styles.searchIcon} />
+    <TextInput
+      style={styles.searchInput}
+      placeholder="Search services or providers..."
+      value={searchQuery}
+      onChangeText={setSearchQuery}
+    />
+  </View>
+
+  {/* Price Slider */}
+  <Text style={styles.filterText}>Price: ${price}</Text>
+  <Slider
+    style={styles.slider}
+    minimumValue={0}
+    maximumValue={200}
+    step={10}
+    value={price}
+    onValueChange={setPrice}
+    minimumTrackTintColor="#CB9DF0"
+    maximumTrackTintColor="#ccc"
+  />
+
+  {/* Distance Slider */}
+  <Text style={styles.filterText}>Distance: {radius} km</Text>
+  <Slider
+    style={styles.slider}
+    minimumValue={1}
+    maximumValue={50}
+    step={1}
+    value={radius}
+    onValueChange={setRadius}
+    minimumTrackTintColor="#CB9DF0"
+    maximumTrackTintColor="#ccc"
+  />
+
+  {/* Category Dropdown */}
+  <Text style={styles.filterText}>Category</Text>
+  <Picker
+    selectedValue={category}
+    style={styles.picker}
+    onValueChange={(itemValue) => setCategory(itemValue)}
+  >
+    <Picker.Item label="All" value="All" />
+    <Picker.Item label="Interior Designer" value="Interior Designer" />
+    <Picker.Item label="Personal Trainer" value="Personal Trainer" />
+    <Picker.Item label="Hair Stylist" value="Hair Stylist" />
+    <Picker.Item label="Plumber" value="Plumber" />
+    {/* Add more categories as needed */}
+  </Picker>
+</View>
 
       {locationStatus === 'loading' && (
         <View style={styles.loadingContainer}>
@@ -177,7 +223,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 10,
     backgroundColor: '#CB9DF0',
   },
   searchContainer: {
@@ -239,4 +285,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  slider: {
+    width: '100%',
+    height: 40,
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 20,
+  },
+  filterText: {
+    color: '#666',
+    marginBottom: 5,
+  },
+  picker: {
+    height: 50,
+    width: '100%',
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 25,
+  }
+  
 });
