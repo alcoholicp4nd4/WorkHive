@@ -6,7 +6,8 @@ import {
 import DropDownPicker from 'react-native-dropdown-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../database/firebaseConfig';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase';
 
 const screenWidth = Dimensions.get('window').width;
@@ -84,6 +85,7 @@ export default function AddServiceScreen() {
     { label: 'Custom Orders', value: 'custom-orders' },
   ]);
 
+
   useEffect(() => {
     const fetchUser = async () => {
       const user = await getCurrentUser();
@@ -111,8 +113,18 @@ export default function AddServiceScreen() {
     }
   };
 
-  const handleRemoveImage = (index) => {
-    setImages(prev => prev.filter((_, i) => i !== index));
+  const uploadImages = async () => {
+    const uploadedURLs = [];
+    for (const uri of images) {
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const filename = `services/${username}/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
+      const imageRef = ref(storage, filename);
+      await uploadBytes(imageRef, blob);
+      const url = await getDownloadURL(imageRef);
+      uploadedURLs.push(url);
+    }
+    return uploadedURLs;
   };
 
   const handleSubmit = async () => {
@@ -123,6 +135,8 @@ export default function AddServiceScreen() {
 
     setLoading(true);
     try {
+      const imageUrls = await uploadImages();
+
       const serviceData = {
         title,
         description,
@@ -131,7 +145,7 @@ export default function AddServiceScreen() {
         priceType,
         price: parseFloat(price),
         deliveryTime,
-        images,
+        images: imageUrls,
         username,
         createdAt: serverTimestamp(),
       };
@@ -234,7 +248,9 @@ export default function AddServiceScreen() {
             {images.map((uri, index) => (
               <View key={index} style={styles.imageThumb}>
                 <Image source={{ uri }} style={styles.image} />
-                <TouchableOpacity onPress={() => handleRemoveImage(index)} style={styles.removeBtn}>
+                <TouchableOpacity onPress={() => {
+                  setImages(images.filter((_, i) => i !== index));
+                }} style={styles.removeBtn}>
                   <Text style={styles.removeText}>✕</Text>
                 </TouchableOpacity>
               </View>

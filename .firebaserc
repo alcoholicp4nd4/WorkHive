@@ -1,5 +1,8 @@
 {
   "projects": {
-    "default": "workhive-46464"
-  }
+    "default": "workhive-46464",
+    "WorkHive": "workhive-46464"
+  },
+  "targets": {},
+  "etags": {}
 }
