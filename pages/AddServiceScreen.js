@@ -115,17 +115,41 @@ export default function AddServiceScreen() {
 
   const uploadImages = async () => {
     const uploadedURLs = [];
+  
     for (const uri of images) {
       const response = await fetch(uri);
       const blob = await response.blob();
-      const filename = `services/${username}/${Date.now()}-${Math.floor(Math.random() * 1000)}.jpg`;
-      const imageRef = ref(storage, filename);
-      await uploadBytes(imageRef, blob);
-      const url = await getDownloadURL(imageRef);
-      uploadedURLs.push(url);
+  
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(blob);
+        reader.onloadend = () => {
+          const base64Data = reader.result.split(',')[1]; // remove data:image/jpeg;base64,
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+      });
+  
+      const formData = new FormData();
+      formData.append('key', '590d8c2489661a30ea77153c3d94cb7e'); // 🔁 replace this
+      formData.append('image', base64);
+  
+      const res = await fetch('https://api.imgbb.com/1/upload', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const json = await res.json();
+      if (json.success) {
+        uploadedURLs.push(json.data.url);
+      } else {
+        console.warn('Upload failed:', json);
+      }
     }
+  
     return uploadedURLs;
   };
+  
 
   const handleSubmit = async () => {
     if (!title || !description || !category || !price || !deliveryTime) {
@@ -134,26 +158,26 @@ export default function AddServiceScreen() {
     }
 
     setLoading(true);
-    try {
-      const imageUrls = await uploadImages();
+try {
+  const imageUrls = await uploadImages(); // 🆕 upload to imgbb first
 
-      const serviceData = {
-        title,
-        description,
-        category,
-        serviceType,
-        priceType,
-        price: parseFloat(price),
-        deliveryTime,
-        images: imageUrls,
-        username,
-        createdAt: serverTimestamp(),
-      };
+  const serviceData = {
+    title,
+    description,
+    category,
+    serviceType,
+    priceType,
+    price: parseFloat(price),
+    deliveryTime,
+    images: imageUrls, // 🆕 use imgbb URLs
+    username,
+    createdAt: serverTimestamp(),
+  };
 
-      await addDoc(collection(db, 'services'), serviceData);
+  await addDoc(collection(db, 'services'), serviceData);
 
-      Alert.alert('Success', 'Service added successfully!');
-      setTitle('');
+  Alert.alert('Success', 'Service added successfully!');
+  setTitle('');
       setDescription('');
       setCategory(null);
       setServiceType('remote');
@@ -161,12 +185,14 @@ export default function AddServiceScreen() {
       setPrice('');
       setDeliveryTime('');
       setImages([]);
-    } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Something went wrong while adding the service.');
-    } finally {
-      setLoading(false);
-    }
+
+} catch (error) {
+  console.error('Error:', error);
+  Alert.alert('Error', 'Something went wrong while adding the service.');
+} finally {
+  setLoading(false);
+}
+
   };
 
   return (
