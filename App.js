@@ -11,15 +11,11 @@ import HomeScreen from './pages/HomeScreen';
 import FavoriteScreen from './pages/FavoriteScreen';
 import SearchScreen from './pages/SearchScreen';
 import ProfileScreen from './pages/ProfileScreen';
-<<<<<<< HEAD
 import AddServiceScreen from './pages/AddServiceScreen'; 
 import ServiceDetailsScreen from './pages/ServiceDetailsScreen';
-=======
 import ChatScreen from './pages/ChatScreen';
 import ChatsScreen from './pages/chats';
 import AdminDashboard from './pages/AdminDashboard';
-
->>>>>>> web-version
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -88,16 +84,12 @@ export default function App() {
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
-<<<<<<< HEAD
         <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} /> 
         <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} /> 
-      </Stack.Navigator>
-=======
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Chats" component={ChatsScreen} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         </Stack.Navigator>
->>>>>>> web-version
     </NavigationContainer>
   );
 }

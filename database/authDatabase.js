@@ -10,7 +10,7 @@ export const registerUser = async (username, email, password) => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-
+    
     // 🔹 Add default role and provider status
     const userData = {
       uid: user.uid,
