@@ -1,112 +1,88 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
-import { collection, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 
 export default function AdminDashboard() {
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      try {
-        const snapshot = await getDocs(collection(db, 'users'));
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        setUsers(data);
-      } catch (error) {
-        console.error('Error fetching users:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchUsers();
   }, []);
 
-  const deleteUser = async (id) => {
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this user?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        onPress: async () => {
-          await deleteDoc(doc(db, 'users', id));
-          setUsers(prev => prev.filter(user => user.id !== id));
-        },
-        style: 'destructive',
-      },
-    ]);
+  const fetchUsers = async () => {
+    const snapshot = await getDocs(collection(db, 'users'));
+    const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setUsers(userList);
   };
 
+  const updateUserRole = async (userId, newRole, newProviderStatus) => {
+    const userRef = doc(db, 'users', userId);
+    await updateDoc(userRef, {
+      role: newRole,
+      isProvider: newProviderStatus,
+    });
+    fetchUsers();
+  };
+
+  const deleteUser = async (userId) => {
+    const userRef = doc(db, 'users', userId);
+    await deleteDoc(userRef);
+    fetchUsers();
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const providerCount = users.filter(u => u.isProvider).length;
+  const userCount = users.length;
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Admin Dashboard</Text>
-      {loading ? (
-        <Text>Loading users...</Text>
-      ) : (
-        <FlatList
-          data={users}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.userCard}>
-              <View style={styles.userInfo}>
-                <Text style={styles.username}>{item.username}</Text>
-                <Text style={styles.email}>{item.email}</Text>
-                <Text style={styles.role}>Role: {item.role || 'user'}</Text>
-              </View>
-              <TouchableOpacity style={styles.deleteBtn} onPress={() => deleteUser(item.id)}>
-                <Text style={styles.deleteText}>Delete</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        />
-      )}
-    </View>
+    <div style={{ padding: 20 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h2>Admin Dashboard</h2>
+        <div style={{ textAlign: 'right' }}>
+          <input
+            type="text"
+            placeholder="Search users..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ padding: 8, borderRadius: 5, marginRight: 10 }}
+          />
+          <div><strong>Users:</strong> {userCount}</div>
+          <div><strong>Providers:</strong> {providerCount}</div>
+        </div>
+      </div>
+
+      <div style={{ overflowY: 'auto', maxHeight: '70vh', marginTop: 20 }}>
+        {filteredUsers.map(user => (
+          <div
+            key={user.id}
+            style={{ background: '#f1f5f9', padding: 15, marginBottom: 10, borderRadius: 8 }}
+          >
+            <strong>{user.username}</strong>
+            <p>{user.email}</p>
+            <p>Role: {user.role || 'user'}</p>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button onClick={() => updateUserRole(user.id, 'admin', user.isProvider)} style={buttonStyle('#0ea5e9')}>Make Admin</button>
+              <button onClick={() => updateUserRole(user.id, user.role || 'user', true)} style={buttonStyle('#10b981')}>Make Provider</button>
+              <button onClick={() => updateUserRole(user.id, user.role || 'user', false)} style={buttonStyle('#f59e0b')}>Revoke Provider</button>
+              <button onClick={() => deleteUser(user.id)} style={buttonStyle('#ef4444')}>Delete</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 20,
-    backgroundColor: '#fff',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  userCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 15,
-    backgroundColor: '#f1f5f9',
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  username: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  email: {
-    fontSize: 14,
-    color: '#555',
-  },
-  role: {
-    fontSize: 12,
-    color: '#888',
-  },
-  deleteBtn: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    backgroundColor: '#ef4444',
-    borderRadius: 6,
-  },
-  deleteText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
+const buttonStyle = (bg) => ({
+  background: bg,
+  color: '#fff',
+  border: 'none',
+  padding: '8px 12px',
+  borderRadius: 5,
+  cursor: 'pointer'
 });
