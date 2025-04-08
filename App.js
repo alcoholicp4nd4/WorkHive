@@ -85,7 +85,8 @@ export default function App() {
         <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
         <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} /> 
-        <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} /> 
+        <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
+
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Chats" component={ChatsScreen} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />

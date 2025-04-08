@@ -1,93 +1,132 @@
-import { View, Text, StyleSheet, ScrollView, Image, SafeAreaView } from 'react-native';
 import React from 'react';
+import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+
+const { width } = Dimensions.get('window');
 
 export default function ServiceDetailsScreen({ route }) {
-  const { service } = route.params; // Get the service data passed from the HomeScreen
+  const { service } = route.params;
 
   return (
-    <SafeAreaView style={styles.safeContainer}>
-      <ScrollView style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{service.username}</Text>
-          <Text style={styles.category}>{service.category}</Text>
-        </View>
-        
-        <Image source={{ uri: service.image }} style={styles.image} />
-
-        <View style={styles.details}>
-          <Text style={styles.sectionTitle}>Service Description</Text>
-          <Text style={styles.description}>{service.serviceDescription}</Text>
-          
-          <Text style={styles.sectionTitle}>Provider Description</Text>
-          <Text style={styles.description}>{service.providerDescription}</Text>
-        </View>
+    <ScrollView style={styles.container}>
+      <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
+        {service.images?.length > 0 ? (
+          service.images.map((uri, index) => (
+            <Image key={index} source={{ uri }} style={styles.image} />
+          ))
+        ) : (
+          <Image source={{ uri: 'https://via.placeholder.com/300' }} style={styles.image} />
+        )}
       </ScrollView>
-    </SafeAreaView>
+
+      <View style={styles.content}>
+        <Text style={styles.title}>{service.title}</Text>
+        <Text style={styles.subtitle}>by {service.username}</Text>
+        <Text style={styles.category}>Category: {service.category}</Text>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Description</Text>
+          <Text style={styles.description}>{service.description}</Text>
+        </View>
+
+        <View style={styles.detailsRow}>
+          <Text style={styles.price}>
+            {service.priceType === 'hourly' ? `$${service.price}/hr` : `$${service.price}`}
+          </Text>
+          <Text style={styles.delivery}>⏱️ {service.deliveryTime}</Text>
+        </View>
+
+        <TouchableOpacity style={styles.primaryButton}>
+          <Text style={styles.primaryButtonText}>💬 Contact Provider</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.secondaryButton}>
+          <Text style={styles.secondaryButtonText}>📦 Book Service</Text>
+        </TouchableOpacity>
+      </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeContainer: {
-    flex: 1,
-    backgroundColor: '#f4f4f4',
-  },
   container: {
-    flex: 1,
-    backgroundColor: '#f4f4f4',
-    paddingHorizontal: 15,
-  },
-  header: {
-    paddingTop: 50, // Adjusted to prevent overlap with notch
-    paddingBottom: 20,
-    backgroundColor: '#CB9DF0',
-    alignItems: 'center',
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 15,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
-    textAlign: 'center',
-    marginBottom: 5,
-  },
-  category: {
-    fontSize: 18,
-    color: '#fff',
-    marginTop: 5,
-    textAlign: 'center',
+    backgroundColor: '#fff',
   },
   image: {
-    width: '100%',
+    width,
     height: 250,
-    borderRadius: 15,
-    marginTop: 15,
-    marginBottom: 20,
-    resizeMode: 'cover',
   },
-  details: {
+  content: {
     padding: 20,
-    backgroundColor: '#fff',
-    borderRadius: 15,
-    marginBottom: 20,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    gap: 12,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333',
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#666',
+    marginTop: -4,
+  },
+  category: {
+    fontSize: 14,
+    color: '#B78BFA',
+    fontWeight: '500',
+  },
+  section: {
+    marginTop: 10,
   },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 10,
-    marginTop: 15,
+    marginBottom: 4,
+    color: '#444',
   },
   description: {
-    fontSize: 16,
-    color: '#666',
+    fontSize: 15,
     lineHeight: 22,
-    textAlign: 'justify',
+    color: '#444',
+  },
+  detailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 12,
+  },
+  price: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333',
+  },
+  delivery: {
+    fontSize: 14,
+    color: '#666',
+  },
+  primaryButton: {
+    backgroundColor: '#B78BFA',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 10,
+    shadowColor: '#B78BFA',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
+  primaryButtonText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  secondaryButton: {
+    backgroundColor: '#EFE3FF',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  secondaryButtonText: {
+    color: '#7A42D3',
+    fontWeight: '600',
+    fontSize: 15,
   },
 });

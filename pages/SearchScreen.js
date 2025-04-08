@@ -19,7 +19,7 @@ import { db } from '../database/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
-export default function SearchScreen() {
+export default function SearchScreen({ navigation }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState([]);
   const [filtered, setFiltered] = useState([]);
@@ -131,7 +131,10 @@ export default function SearchScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <TouchableOpacity style={styles.card}>
+            <TouchableOpacity
+  style={styles.card}
+  onPress={() => navigation.navigate('ServiceDetails', { service: item })}
+>
               <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
                 {item.images && item.images.length > 0 ? (
                   item.images.map((uri, idx) => (
