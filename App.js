@@ -16,6 +16,8 @@ import ServiceDetailsScreen from './pages/ServiceDetailsScreen';
 import ChatScreen from './pages/ChatScreen';
 import ChatsScreen from './pages/chats';
 import AdminDashboard from './pages/AdminDashboard';
+import MyBookingsScreen from './pages/MyBookingsScreen';
+import ProviderBookingsScreen from './pages/ProviderBookingsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,7 +49,10 @@ function MainAppTabs() {
       <Tab.Screen name="Favorite" component={FavoriteScreen} />
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
-      <Tab.Screen name="Chats" component={ChatsScreen} />    
+      <Tab.Screen name="Chats" component={ChatsScreen} />
+      <Tab.Screen name="MyBooking" component={MyBookingsScreen} /> 
+      <Tab.Screen name="BookedServices" component={ProviderBookingsScreen} /> 
+
       </Tab.Navigator>
   );
 }
@@ -86,10 +91,11 @@ export default function App() {
         <Stack.Screen name="MainApp" component={MainAppTabs} />
         <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} /> 
         <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
-
         <Stack.Screen name="Chat" component={ChatScreen} />
         <Stack.Screen name="Chats" component={ChatsScreen} />
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+        <Stack.Screen name="MyBooking" component={MyBookingsScreen} />
+        <Stack.Screen name="BookedServices" component={ProviderBookingsScreen} />
         </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,10 +1,41 @@
 import React from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
+import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import { getAuth } from 'firebase/auth';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../database/firebaseConfig';
 
 const { width } = Dimensions.get('window');
 
-export default function ServiceDetailsScreen({ route }) {
+export default function ServiceDetailsScreen({ route, navigation }) {
   const { service } = route.params;
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
+
+  const handleBookService = async () => {
+    if (!service.userId) {
+      Alert.alert("Error", "Service provider ID is missing.");
+      return;
+    }
+  
+    if (currentUser?.uid === service.userId) {
+      Alert.alert("You cannot book your own service.");
+      return;
+    }
+  
+    try {
+      await addDoc(collection(db, 'bookings'), {
+        serviceId: service.id,
+        providerId: service.userId,
+        userId: currentUser.uid,
+        status: 'pending',
+        createdAt: serverTimestamp(),
+      });
+      Alert.alert('Success', 'Service booked successfully!');
+    } catch (error) {
+      console.error('Booking error:', error);
+      Alert.alert('Error', 'Failed to book the service.');
+    }
+  };
 
   return (
     <ScrollView style={styles.container}>
@@ -39,7 +70,7 @@ export default function ServiceDetailsScreen({ route }) {
           <Text style={styles.primaryButtonText}>💬 Contact Provider</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.secondaryButton}>
+        <TouchableOpacity style={styles.secondaryButton} onPress={handleBookService}>
           <Text style={styles.secondaryButtonText}>📦 Book Service</Text>
         </TouchableOpacity>
       </View>

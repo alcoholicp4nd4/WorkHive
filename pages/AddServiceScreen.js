@@ -156,28 +156,36 @@ export default function AddServiceScreen() {
       Alert.alert('Missing Fields', 'Please fill out all required fields.');
       return;
     }
-
+  
     setLoading(true);
-try {
-  const imageUrls = await uploadImages(); // 🆕 upload to imgbb first
-
-  const serviceData = {
-    title,
-    description,
-    category,
-    serviceType,
-    priceType,
-    price: parseFloat(price),
-    deliveryTime,
-    images: imageUrls, // 🆕 use imgbb URLs
-    username,
-    createdAt: serverTimestamp(),
-  };
-
-  await addDoc(collection(db, 'services'), serviceData);
-
-  Alert.alert('Success', 'Service added successfully!');
-  setTitle('');
+    try {
+      const imageUrls = await uploadImages(); // Upload to imgbb first
+  
+      const user = await getCurrentUser();
+      if (!user) {
+        Alert.alert('Error', 'User not authenticated.');
+        setLoading(false);
+        return;
+      }
+  
+      const serviceData = {
+        title,
+        description,
+        category,
+        serviceType,
+        priceType,
+        price: parseFloat(price),
+        deliveryTime,
+        images: imageUrls, // Use imgbb URLs
+        username,
+        userId: user.uid, // Add the user's UID
+        createdAt: serverTimestamp(),
+      };
+  
+      await addDoc(collection(db, 'services'), serviceData);
+  
+      Alert.alert('Success', 'Service added successfully!');
+      setTitle('');
       setDescription('');
       setCategory(null);
       setServiceType('remote');
@@ -185,14 +193,13 @@ try {
       setPrice('');
       setDeliveryTime('');
       setImages([]);
-
-} catch (error) {
-  console.error('Error:', error);
-  Alert.alert('Error', 'Something went wrong while adding the service.');
-} finally {
-  setLoading(false);
-}
-
+  
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Something went wrong while adding the service.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
