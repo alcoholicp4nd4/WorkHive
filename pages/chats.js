@@ -47,7 +47,7 @@ export default function ChatsScreen() {
               style={styles.chatCard}
               onPress={() => {
                 if (currentUser) {
-                  navigation.navigate('ChatScreen', {
+                  navigation.navigate('Chat', {
                     currentUserId: currentUser.uid,
                     providerId: provider.uid,
                   });
