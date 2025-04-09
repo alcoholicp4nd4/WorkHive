@@ -26,7 +26,7 @@ export default function AddServiceScreen() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [categories, setCategories] = useState([
-    // Tech
+    { label: '--Tech--', value: 'tech-label', disabled: true },
     { label: 'Web Development', value: 'web-development' },
     { label: 'Mobile App Development', value: 'mobile-app-development' },
     { label: 'Software Engineering', value: 'software-engineering' },
@@ -34,8 +34,8 @@ export default function AddServiceScreen() {
     { label: 'QA Testing', value: 'qa-testing' },
     { label: 'Game Development', value: 'game-development' },
     { label: 'DevOps & Cloud', value: 'devops-cloud' },
-
-    // Design
+  
+    { label: '--Design--', value: 'design-label', disabled: true },
     { label: 'Graphic Design', value: 'graphic-design' },
     { label: 'Logo Design', value: 'logo-design' },
     { label: 'Animation', value: 'animation' },
@@ -43,8 +43,8 @@ export default function AddServiceScreen() {
     { label: 'Photography', value: 'photography' },
     { label: 'Branding & Identity', value: 'branding' },
     { label: 'Illustration', value: 'illustration' },
-
-    // Business
+  
+    { label: '--Business--', value: 'business-label', disabled: true },
     { label: 'SEO Optimization', value: 'seo' },
     { label: 'Digital Marketing', value: 'digital-marketing' },
     { label: 'Social Media Management', value: 'social-media' },
@@ -52,8 +52,8 @@ export default function AddServiceScreen() {
     { label: 'Copywriting', value: 'copywriting' },
     { label: 'Business Consulting', value: 'business-consulting' },
     { label: 'Sales Strategy', value: 'sales-strategy' },
-
-    // Local
+  
+    { label: '--Local--', value: 'local-label', disabled: true },
     { label: 'Plumbing', value: 'plumbing' },
     { label: 'Electrical Work', value: 'electrical' },
     { label: 'Cleaning', value: 'cleaning' },
@@ -61,23 +61,23 @@ export default function AddServiceScreen() {
     { label: 'Handyman Services', value: 'handyman' },
     { label: 'Pest Control', value: 'pest-control' },
     { label: 'Landscaping', value: 'landscaping' },
-
-    // Education
+  
+    { label: '--Education--', value: 'education-label', disabled: true },
     { label: 'Tutoring', value: 'tutoring' },
     { label: 'Language Teaching', value: 'language-teaching' },
     { label: 'Life Coaching', value: 'life-coaching' },
     { label: 'Career Coaching', value: 'career-coaching' },
     { label: 'Test Preparation', value: 'test-prep' },
-
-    // Wellness
+  
+    { label: '--Wellness--', value: 'wellness-label', disabled: true },
     { label: 'Fitness Training', value: 'fitness-training' },
     { label: 'Yoga Instruction', value: 'yoga' },
     { label: 'Therapy & Counseling', value: 'therapy' },
     { label: 'Nutrition Planning', value: 'nutrition' },
     { label: 'Beauty & Skincare', value: 'beauty' },
     { label: 'Hair Styling', value: 'hair-styling' },
-
-    // Other
+  
+    { label: '--Other--', value: 'other-label', disabled: true },
     { label: 'Event Planning', value: 'event-planning' },
     { label: 'Virtual Assistance', value: 'virtual-assistance' },
     { label: 'Data Entry', value: 'data-entry' },
@@ -101,7 +101,7 @@ export default function AddServiceScreen() {
 
   const pickImages = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.Images,
       allowsEditing: true,
       quality: 0.5,
       allowsMultipleSelection: true,
@@ -224,16 +224,18 @@ export default function AddServiceScreen() {
 
         <Text style={styles.label}>Category</Text>
         <DropDownPicker
-          open={open}
-          value={category}
-          items={categories}
-          setOpen={setOpen}
-          setValue={setCategory}
-          setItems={setCategories}
-          placeholder="Select a category"
-          style={styles.dropdown}
-          dropDownContainerStyle={styles.dropdownContainer}
-        />
+  open={open}
+  value={category}
+  items={categories}
+  setOpen={setOpen}
+  setValue={setCategory}
+  setItems={setCategories}
+  placeholder="Select a category"
+  style={styles.dropdown}
+  dropDownContainerStyle={styles.dropdownContainer}
+  searchable={true} // Enable search functionality
+  searchPlaceholder="Search categories..." // Customize search placeholder
+/>
 
         <Text style={styles.label}>Service Type</Text>
         <View style={styles.row}>

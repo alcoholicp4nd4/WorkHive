@@ -3,6 +3,7 @@ import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
+import { query, where, getDocs } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -23,7 +24,18 @@ export default function ServiceDetailsScreen({ route, navigation }) {
     }
   
     try {
-      await addDoc(collection(db, 'bookings'), {
+      // Check if the user has already booked this service
+      const bookingsRef = collection(db, 'bookings');
+      const q = query(bookingsRef, where('serviceId', '==', service.id), where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+  
+      if (!querySnapshot.empty) {
+        Alert.alert('Error', 'You have already booked this service.');
+        return;
+      }
+  
+      // Proceed with booking if no existing booking is found
+      await addDoc(bookingsRef, {
         serviceId: service.id,
         providerId: service.userId,
         userId: currentUser.uid,
