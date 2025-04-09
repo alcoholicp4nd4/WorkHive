@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, TextInput } from 'react-native';
 import { collection, query, where, onSnapshot, updateDoc, doc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
@@ -18,8 +18,36 @@ export default function ProviderBookingsScreen() {
     return () => unsubscribe();
   }, []);
 
-  const handleUpdateStatus = async (bookingId, newStatus) => {
-    await updateDoc(doc(db, 'bookings', bookingId), { status: newStatus });
+  const handleUpdateStatus = async (bookingId, newStatus, rejectionReason = '') => {
+    const updateData = { status: newStatus };
+    if (rejectionReason) {
+      updateData.rejectionReason = rejectionReason;
+    }
+    await updateDoc(doc(db, 'bookings', bookingId), updateData);
+  };
+
+  const handleReject = (bookingId) => {
+    Alert.prompt(
+      'Reject Booking',
+      'Please provide a reason for rejection:',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Submit',
+          onPress: async (reason) => {
+            if (reason) {
+              await handleUpdateStatus(bookingId, 'rejected', reason);
+            } else {
+              Alert.alert('Error', 'Rejection reason cannot be empty.');
+            }
+          },
+        },
+      ],
+      'plain-text'
+    );
   };
 
   const renderItem = ({ item }) => (
@@ -29,12 +57,21 @@ export default function ProviderBookingsScreen() {
       <Text>Status: {item.status}</Text>
 
       <View style={styles.btnRow}>
-        <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'confirmed')} style={styles.btn}>
-          <Text>✅ Confirm</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'completed')} style={styles.btn}>
-          <Text>🏁 Complete</Text>
-        </TouchableOpacity>
+        {item.status === 'pending' && (
+          <>
+            <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'in progress')} style={styles.btn}>
+              <Text>✅ Confirm</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => handleReject(item.id)} style={styles.btn}>
+              <Text>❌ Reject</Text>
+            </TouchableOpacity>
+          </>
+        )}
+        {item.status === 'in progress' && (
+          <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'completed')} style={styles.btn}>
+            <Text>🏁 Complete</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
