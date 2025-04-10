@@ -1,6 +1,6 @@
 import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
 import { useState, useEffect } from 'react';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect  } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   uploadProfileImage,
@@ -133,6 +133,15 @@ export default function ProfileScreen() {
         ))}
       </View>
 
+      {user?.isProvider && (
+  <TouchableOpacity
+    style={styles.analyticsButton}
+    onPress={() => navigation.navigate('Analytics')}
+  >
+    <Text style={styles.analyticsText}>View Analytics</Text>
+  </TouchableOpacity>
+)}
+
       {/* Navigate to Add Service Screen */}
       <TouchableOpacity
         style={[styles.menuItem, { backgroundColor: '#A9D1F7' }]}
@@ -160,6 +169,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#fff',
   },
+  analyticsButton: {
+    backgroundColor: '#B78BFA',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 15,
+    alignItems: 'center',
+  },
+  analyticsText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },  
   cameraIcon: {
     position: 'absolute',
     bottom: 0,

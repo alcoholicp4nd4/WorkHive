@@ -18,6 +18,7 @@ import ChatsScreen from './pages/chats';
 import AdminDashboard from './pages/AdminDashboard';
 import MyBookingsScreen from './pages/MyBookingsScreen';
 import ProviderBookingsScreen from './pages/ProviderBookingsScreen';
+import AnalyticsScreen from './pages/AnalyticsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -96,6 +97,7 @@ export default function App() {
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="MyBooking" component={MyBookingsScreen} />
         <Stack.Screen name="BookedServices" component={ProviderBookingsScreen} />
+        <Stack.Screen name="Analytics" component={AnalyticsScreen} />
         </Stack.Navigator>
     </NavigationContainer>
   );
