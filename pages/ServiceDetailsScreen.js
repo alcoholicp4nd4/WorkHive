@@ -1,9 +1,9 @@
+
 import React from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { getAuth } from 'firebase/auth';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
-import { query, where, getDocs } from 'firebase/firestore';
 
 const { width } = Dimensions.get('window');
 
@@ -30,11 +30,14 @@ export default function ServiceDetailsScreen({ route, navigation }) {
       const querySnapshot = await getDocs(q);
   
       if (!querySnapshot.empty) {
-        Alert.alert('Error', 'You have already booked this service.');
-        return;
+        const existingBooking = querySnapshot.docs[0].data();
+        if (existingBooking.status !== 'completed') {
+          Alert.alert('Error', 'You have already booked this service.');
+          return;
+        }
       }
   
-      // Proceed with booking if no existing booking is found
+      // Proceed with booking if no existing booking is found or if the previous booking is complete
       await addDoc(bookingsRef, {
         serviceId: service.id,
         providerId: service.userId,
