@@ -18,6 +18,8 @@ import ChatsScreen from './pages/chats';
 import AdminDashboard from './pages/AdminDashboard';
 import MyBookingsScreen from './pages/MyBookingsScreen';
 import ProviderBookingsScreen from './pages/ProviderBookingsScreen';
+import BookingDetailsScreen from './pages/BookingDetailsScreen';
+import ReportForm from './pages/ReportForm';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -96,7 +98,9 @@ export default function App() {
         <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
         <Stack.Screen name="MyBooking" component={MyBookingsScreen} />
         <Stack.Screen name="BookedServices" component={ProviderBookingsScreen} />
-        </Stack.Navigator>
+        <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
+        <Stack.Screen name="ReportForm" component={ReportForm} />
+      </Stack.Navigator>
     </NavigationContainer>
   );
 }

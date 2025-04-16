@@ -3,12 +3,13 @@ import { useNavigation } from '@react-navigation/native';
 import { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
-import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
+import { getCurrentUser } from '../database/authDatabase';
 
 export default function ChatsScreen() {
   const navigation = useNavigation();
   const [providers, setProviders] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchProviders = async () => {
@@ -22,6 +23,8 @@ export default function ChatsScreen() {
         setProviders(fetched);
       } catch (err) {
         console.error('❌ Firestore fetch error:', err);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -34,12 +37,22 @@ export default function ChatsScreen() {
     fetchUser();
   }, []);
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text>Loading chats...</Text>
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.chatsSection}>
         <Text style={styles.sectionTitle}>Chats</Text>
         {providers.length === 0 ? (
-          <Text>No providers found.</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No providers found.</Text>
+          </View>
         ) : (
           providers.map((provider) => (
             <TouchableOpacity
@@ -55,7 +68,7 @@ export default function ChatsScreen() {
               }}
             >
               <View style={styles.chatInfo}>
-                <Text style={styles.providerName}>{provider.username}</Text> {/* Render username */}
+                <Text style={styles.providerName}>{provider.username || 'Provider'}</Text>
                 <Text style={styles.providerService}>Service Provider</Text>
               </View>
             </TouchableOpacity>
@@ -70,6 +83,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   chatsSection: {
     paddingBottom: 20,
@@ -99,9 +117,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: '#333',
+    marginBottom: 5,
   },
   providerService: {
     fontSize: 14,
+    color: '#666',
+  },
+  emptyState: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
     color: '#666',
   },
 });
