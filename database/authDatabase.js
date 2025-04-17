@@ -15,6 +15,7 @@ import {
   query,
   where,
   getDocs,
+  addDoc,
 } from "firebase/firestore";
 import { auth, db } from './firebaseConfig';
 
@@ -187,5 +188,33 @@ export const updateUserProfile = async (uid, data) => {
   } catch (err) {
     console.error("❌ updateUserProfile error:", err);
     return false;
+  }
+};
+
+// ✅ Create admin user
+export const createAdminUser = async (username, email, password) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    const userData = {
+      uid: user.uid,
+      username: username,
+      email: email,
+      isProvider: false,
+      role: "admin", // Set role to admin
+    };
+
+    await addDoc(collection(db, "users"), userData);
+
+    if (Platform.OS === "web") {
+      localStorage.setItem("loggedInUser", JSON.stringify(userData));
+    } else {
+      await AsyncStorage.setItem("loggedInUser", JSON.stringify(userData));
+    }
+
+    return { success: true, user: userData };
+  } catch (error) {
+    return { success: false, error: error.message };
   }
 };

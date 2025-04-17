@@ -5,7 +5,6 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
 
-
 const headerImage = { uri: 'https://www.shutterstock.com/image-photo/happy-mid-aged-business-woman-600nw-2353012835.jpg' };
 const categories = [
   {
@@ -124,7 +123,6 @@ const categories = [
   },
 ];
 
-
 const featuredProviders = [
   {
     id: 1,
@@ -141,8 +139,9 @@ const featuredProviders = [
     image: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
   },
 ];
+
 export default function HomeScreen() {
-  const navigation = useNavigation(); // Initialize navigation
+  const navigation = useNavigation();
   const [providers, setProviders] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -168,7 +167,6 @@ export default function HomeScreen() {
       setCurrentUser(user);
     };
     fetchUser();
-  
   }, []);
 
   return (
@@ -176,7 +174,7 @@ export default function HomeScreen() {
       <ImageBackground source={headerImage} style={styles.header} resizeMode="cover">
         <Text style={styles.greeting}>Our service providers got it from here</Text>
         <Text style={styles.subtitle}>Find the perfect service provider</Text>
-  </ImageBackground>
+      </ImageBackground>
 
       <View style={styles.categoriesSection}>
         <Text style={styles.sectionTitle}>Categories</Text>
@@ -184,7 +182,7 @@ export default function HomeScreen() {
           {categories.map((category) => (
             <TouchableOpacity
               key={category.id}
-              onPress={() => navigation.navigate('Category', { id: category.id })} // Use navigation.navigate
+              onPress={() => navigation.navigate('Category', { id: category.id })}
               style={styles.categoryCard}
             >
               <Image source={{ uri: category.image }} style={styles.categoryImage} />
@@ -204,20 +202,18 @@ export default function HomeScreen() {
         ) : (
           providers.map((provider) => (
             <TouchableOpacity
-            key={provider.uid}
-            style={styles.providerCard}
-            onPress={() => {
-              console.log("Tapped on provider:", provider.username); // ✅ debug
-              if (currentUser) {
-                navigation.navigate("Chat", {
-                  currentUserId: currentUser.uid,
-                  providerId: provider.uid,
-                });
-              }
-            }}
-          >
-
-              
+              key={provider.uid}
+              style={styles.providerCard}
+              onPress={() => {
+                console.log("Tapped on provider:", provider.username);
+                if (currentUser) {
+                  navigation.navigate("Chat", {
+                    currentUserId: currentUser.uid,
+                    providerId: provider.uid,
+                  });
+                }
+              }}
+            >
               <View style={styles.providerInfo}>
                 <Text style={styles.providerName}>{provider.username}</Text>
                 <Text style={styles.providerService}>Service Provider</Text>
@@ -234,8 +230,8 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  headerContainer: {
-    overflow: 'hidden',
+  container: {
+    flex: 1,
   },
   header: {
     height: 400,
@@ -255,7 +251,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     textAlign: 'center',
   },
- categoriesSection: {
+  categoriesSection: {
     padding: 20,
   },
   sectionTitle: {

@@ -31,8 +31,7 @@ export default function MyBookingsScreen() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    const date = timestamp && typeof timestamp.toDate === 'function' ? timestamp.toDate() : null;
-    if (!date) return 'Invalid Date';
+    const date = timestamp.toDate();
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 

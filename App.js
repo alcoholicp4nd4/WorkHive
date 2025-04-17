@@ -24,6 +24,7 @@ import ProfileSetupScreen from "./pages/ProfileSetupScreen";
 import UserProfileScreen from "./pages/UserProfileScreen";
 import EditProfileScreen from "./pages/EditProfileScreen";
 import PublicProfileScreen from "./pages/PublicProfileScreen";
+
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
 

@@ -77,6 +77,18 @@ export default function BookingDetailsScreen({ route }) {
     }
   };
 
+  const formatLocation = (location) => {
+    if (!location) return 'N/A';
+    if (typeof location === 'string') return location;
+    if (typeof location === 'object') {
+      if (location.latitude && location.longitude) {
+        return `${location.latitude.toFixed(6)}, ${location.longitude.toFixed(6)}`;
+      }
+      if (location.address) return location.address;
+    }
+    return 'N/A';
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -137,7 +149,7 @@ export default function BookingDetailsScreen({ route }) {
 
           <View style={styles.infoRow}>
             <MapPin size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Location: {service?.location}</Text>
+            <Text style={styles.infoText}>Location: {formatLocation(service?.location)}</Text>
           </View>
 
           <View style={styles.infoRow}>

@@ -137,7 +137,7 @@ export default function SearchScreen({ navigation }) {
     return () => unsubscribe();
   }, []);
 
-  // Get user’s current location (for the Nearby filter)
+  // Get user's current location (for the Nearby filter)
   useEffect(() => {
     getUserLocation();
   }, []);
