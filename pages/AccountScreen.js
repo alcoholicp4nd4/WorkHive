@@ -18,6 +18,7 @@ import {
   CircleHelp as HelpCircle,
   LogOut,
   Camera,
+  User,
 } from 'lucide-react-native';
 
 const menuItems = [
@@ -28,7 +29,7 @@ const menuItems = [
   { icon: HelpCircle, label: 'Help & Support' },
 ];
 
-export default function ProfileScreen() {
+export default function AccountScreen() {
   const navigation = useNavigation();
   const [user, setUser] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
@@ -55,7 +56,7 @@ export default function ProfileScreen() {
       return;
     }
 
-    let result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['image'],
       allowsEditing: true,
       aspect: [1, 1],
@@ -83,26 +84,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleBecomeProvider = async () => {
-    if (!user) return;
-
-    try {
-      await updateUserToProvider(user.uid);
-
-      const updatedUser = { ...user, isProvider: true };
-      if (Platform.OS === 'web') {
-        localStorage.setItem('loggedInUser', JSON.stringify(updatedUser));
-      } else {
-        await AsyncStorage.setItem('loggedInUser', JSON.stringify(updatedUser));
-      }
-
-      setUser(updatedUser);
-      Alert.alert('Success', "You're now a provider!");
-    } catch (err) {
-      Alert.alert('Error', 'Failed to become a provider.');
-    }
-  };
-
   const handleLogout = async () => {
     await logoutUser();
     navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
@@ -110,53 +91,76 @@ export default function ProfileScreen() {
 
   return (
     <ScrollView style={styles.container}>
+      {/* Header with profile info */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={pickImage} disabled={loading}>
-          <Image source={{ uri: profileImage || 'https://placehold.co/100' }} style={styles.profileImage} />
+        <TouchableOpacity onPress={pickImage} disabled={loading} style={{ position: 'relative' }}>
+          <Image
+            source={{ uri: profileImage || 'https://placehold.co/100' }}
+            style={styles.profileImage}
+          />
           <View style={styles.cameraIcon}>
-            <Camera size={24} color="#fff" />
+            <Camera size={20} color="#fff" />
           </View>
         </TouchableOpacity>
-        <Text style={styles.name}>{user ? user.username : 'Loading...'}</Text>
+        <Text style={styles.userName}>{user ? user.username : 'Loading...'}</Text>
         <Text style={styles.email}>{user ? user.email : 'Loading...'}</Text>
+        {loading && <Text style={styles.uploadingText}>Uploading...</Text>}
       </View>
 
-      {loading && <Text style={{ color: 'white' }}>Uploading...</Text>}
+      {/* View Profile */}
+      <TouchableOpacity
+        style={styles.editProfileButton}
+        onPress={() => navigation.navigate('UserProfileScreen')}
+      >
+        <User size={20} color="#fff" />
+        <Text style={styles.editProfileText}>View Profile</Text>
+      </TouchableOpacity>
 
       {/* Menu Items */}
       <View style={styles.menuContainer}>
         {menuItems.map((item, index) => (
           <TouchableOpacity key={index} style={styles.menuItem}>
-            <item.icon size={24} color="#333" />
+            <item.icon size={20} color="#4F4F4F" />
             <Text style={styles.menuLabel}>{item.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      {/* Navigate to Add Service Screen */}
+      {/* Add Service Button */}
       <TouchableOpacity
-        style={[styles.menuItem, { backgroundColor: '#A9D1F7' }]}
-        onPress={() => navigation.navigate('AddServiceScreen')}>
-        <Text style={styles.menuLabel}>Add Service</Text>
+        style={styles.addServiceButton}
+        onPress={() => navigation.navigate('AddServiceScreen')}
+      >
+        <Text style={styles.addServiceButtonText}>Add Service</Text>
       </TouchableOpacity>
 
       {/* Logout Button */}
-      <TouchableOpacity style={[styles.menuItem, styles.logoutButton]} onPress={handleLogout}>
-        <LogOut size={24} color="#D9534F" />
-        <Text style={[styles.menuLabel, { color: '#D9534F' }]}>Log Out</Text>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <LogOut size={20} color="#fff" />
+        <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  header: { alignItems: 'center', padding: 20, paddingTop: 60, backgroundColor: '#CB9DF0' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F2ECFA', // Soft pastel background
+  },
+  header: {
+    alignItems: 'center',
+    paddingTop: 50,
+    paddingBottom: 40,
+    backgroundColor: '#B78BFA', // Pastel purple header
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    marginBottom: 30,
+  },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    marginBottom: 15,
     borderWidth: 2,
     borderColor: '#fff',
   },
@@ -164,21 +168,93 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     right: 0,
-    backgroundColor: '#00000080',
-    borderRadius: 20,
-    padding: 5,
+    backgroundColor: '#00000099',
+    borderRadius: 50,
+    padding: 3,
   },
-  name: { fontSize: 24, fontWeight: 'bold', color: '#fff' },
-  email: { fontSize: 16, color: '#fff', marginTop: 5 },
-  menuContainer: { padding: 20 },
+  userName: {
+    marginTop: 15,
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  email: {
+    fontSize: 14,
+    color: '#fff',
+    marginTop: 5,
+  },
+  uploadingText: {
+    marginTop: 5,
+    color: '#fff',
+    fontSize: 12,
+  },
+  editProfileButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'center',
+    backgroundColor: '#6C2ED9',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+    marginBottom: 20,
+    marginTop: -15, // Slight overlap below header
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  editProfileText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  menuContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FDDBBB',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
+    backgroundColor: '#FCE3B7', // Lighter peach color
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 14,
   },
-  menuLabel: { marginLeft: 15, fontSize: 16, color: '#333' },
-  logoutButton: { backgroundColor: '#FFE5E5' },
+  menuLabel: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#4F4F4F',
+    fontWeight: '600',
+  },
+  addServiceButton: {
+    backgroundColor: '#E6D1FF',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  addServiceButtonText: {
+    fontSize: 15,
+    color: '#4E2E8C',
+    fontWeight: '600',
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    backgroundColor: '#CF4C4C',
+    marginHorizontal: 20,
+    marginBottom: 50,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  logoutButtonText: {
+    fontSize: 15,
+    color: '#fff',
+    marginLeft: 8,
+    fontWeight: '600',
+  },
 });

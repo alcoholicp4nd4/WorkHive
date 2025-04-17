@@ -31,7 +31,8 @@ export default function MyBookingsScreen() {
 
   const formatDate = (timestamp) => {
     if (!timestamp) return 'N/A';
-    const date = timestamp.toDate();
+    const date = timestamp && typeof timestamp.toDate === 'function' ? timestamp.toDate() : null;
+    if (!date) return 'Invalid Date';
     return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
   };
 
@@ -67,6 +68,10 @@ export default function MyBookingsScreen() {
   }, [bookings]);
 
   const cancelBooking = async (bookingId, createdAt) => {
+    if (!createdAt || typeof createdAt.toDate !== 'function') {
+      Alert.alert('Error', 'Booking creation time is missing or invalid. Cannot cancel.');
+      return;
+    }
     const now = new Date();
     const bookingDate = createdAt.toDate();
     const timeDifference = now - bookingDate;
@@ -86,6 +91,9 @@ export default function MyBookingsScreen() {
   };
 
   const formatCountdown = (createdAt) => {
+    if (!createdAt || typeof createdAt.toDate !== 'function') {
+      return 'Invalid Date';
+    }
     const now = new Date();
     const bookingDate = createdAt.toDate();
     const endTime = new Date(bookingDate.getTime() + 24 * 60 * 60 * 1000);

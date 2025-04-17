@@ -2,6 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { Home, Search, Heart, User } from 'lucide-react-native';
+import AccountScreen from '../pages/AccountScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -41,8 +42,8 @@ export default function TabLayout() {
           }}
         />
         <Tab.Screen
-          name="Profile"
-          component={ProfileScreen}
+          name="Account"
+          component={AccountScreen}
           options={{
             tabBarIcon: ({ size, color }) => <User size={size} color={color} />,
           }}

@@ -28,7 +28,7 @@ const RegisterScreen = ({ navigation }) => {
     if (response.success) {
       console.log("✅ Registration successful:", response.user);
       Alert.alert("Account Created", `Welcome, ${email}!`);
-      navigation.reset({ index: 0, routes: [{ name: 'MainApp' }] });
+      navigation.reset({ index: 0, routes: [{ name: 'ProfileSetupScreen' }] });
     } else {
       console.warn("❌ Registration Error:", response.error);
       Alert.alert("Registration Failed", response.error);

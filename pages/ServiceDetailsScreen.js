@@ -88,6 +88,22 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         <TouchableOpacity style={styles.secondaryButton} onPress={handleBookService}>
           <Text style={styles.secondaryButtonText}>📦 Book Service</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+  onPress={() => navigation.navigate('PublicProfileScreen', { userId: service.userId })}
+  style={{
+    marginTop: 16,
+    backgroundColor: '#5A31F4',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  }}
+>
+  <Text style={{ color: '#fff', fontWeight: 'bold', textAlign: 'center' }}>
+    View Provider Profile
+  </Text>
+</TouchableOpacity>
+
       </View>
     </ScrollView>
   );
