@@ -1,5 +1,6 @@
 {
   "expo": {
+    "scheme": "workhive",
     "name": "WorkHive",
     "slug": "WorkHive",
     "version": "1.0.0",

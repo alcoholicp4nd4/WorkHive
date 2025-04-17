@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
+import NotificationBell from '../Components/NotificationBell';
 
 const headerImage = { uri: 'https://www.shutterstock.com/image-photo/happy-mid-aged-business-woman-600nw-2353012835.jpg' };
 const categories = [
@@ -144,6 +145,15 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const [providers, setProviders] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Set the NotificationBell in the header
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <NotificationBell navigation={navigation} />
+      ),
+    });
+  }, [navigation]);
 
   useEffect(() => {
     const fetchProviders = async () => {

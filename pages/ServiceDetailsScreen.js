@@ -4,6 +4,7 @@ import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
+import { sendNotification } from '../utils/notificationUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -36,6 +37,11 @@ export default function ServiceDetailsScreen({ route, navigation }) {
           return;
         }
       }
+      await sendNotification(
+        service.userId,
+        'booking',
+        `You have a new booking for "${service.title}".`
+      );
   
       // Proceed with booking if no existing booking is found or if the previous booking is complete
       await addDoc(bookingsRef, {

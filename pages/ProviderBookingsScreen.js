@@ -3,6 +3,7 @@ import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
+import { sendNotification } from '../utils/notificationUtils';
 
 export default function ProviderBookingsScreen() {
   const [bookings, setBookings] = useState([]);
@@ -12,6 +13,7 @@ export default function ProviderBookingsScreen() {
   const [sortOrder, setSortOrder] = useState('desc');
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
+  
 
   useEffect(() => {
     const q = query(collection(db, 'bookings'), where('providerId', '==', userId));
@@ -65,6 +67,21 @@ export default function ProviderBookingsScreen() {
       updateData.rejectionReason = rejectionReason;
     }
     await updateDoc(doc(db, 'bookings', bookingId), updateData);
+    const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+const booking = bookingDoc.data();
+if (booking) {
+  let message = '';
+  if (newStatus === 'in progress') {
+    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" is now in progress.`;
+  } else if (newStatus === 'completed') {
+    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" has been completed.`;
+  } else if (newStatus === 'rejected') {
+    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" was rejected.`;
+  }
+  if (message) {
+    await sendNotification(booking.userId, 'status_update', message, bookingId);
+  }
+}
   };
 
   const handleReject = (bookingId) => {
