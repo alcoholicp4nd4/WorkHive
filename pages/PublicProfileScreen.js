@@ -7,12 +7,16 @@ import {
   StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
-  Alert
+  Alert,
+  SafeAreaView,
+  Platform,
+  StatusBar
 } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function PublicProfileScreen() {
   const route = useRoute();
@@ -92,58 +96,83 @@ export default function PublicProfileScreen() {
   if (!user) return <Text style={styles.error}>User not found.</Text>;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>{user.fullName}'s Profile</Text>
-
-      <Image
-        source={user.profileImage ? { uri: user.profileImage } : require('../assets/Avatar_placeholder.png')}
-        style={styles.avatar}
-      />
-
-      <View style={styles.section}>
-        <Text style={styles.label}>Bio</Text>
-        <Text style={styles.value}>{user.bio || '—'}</Text>
-
-        <Text style={styles.label}>Phone</Text>
-        <Text style={styles.value}>{user.phone || '—'}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeft size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Provider Profile</Text>
       </View>
+      <ScrollView contentContainerStyle={styles.container}>
+        <Image
+          source={user.profileImage ? { uri: user.profileImage } : require('../assets/Avatar_placeholder.png')}
+          style={styles.avatar}
+        />
 
-      <Text style={styles.subheading}>Services Offered</Text>
-      {services.length > 0 ? (
-        services.map((service, index) => (
-          <View key={index} style={styles.serviceCard}>
-            {service.images && service.images.length > 0 && (
-              <Image source={{ uri: service.images[0] }} style={styles.serviceImage} />
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.serviceTitle}>{service.title}</Text>
-              <Text style={styles.serviceDesc}>{service.description}</Text>
-              <Text style={styles.serviceInfo}>Price: ${service.price}</Text>
-              <Text style={styles.serviceInfo}>Delivery: {service.deliveryTime} days</Text>
+        <View style={styles.section}>
+          <Text style={styles.label}>Bio</Text>
+          <Text style={styles.value}>{user.bio || '—'}</Text>
+
+          <Text style={styles.label}>Phone</Text>
+          <Text style={styles.value}>{user.phone || '—'}</Text>
+        </View>
+
+        <Text style={styles.subheading}>Services Offered</Text>
+        {services.length > 0 ? (
+          services.map((service, index) => (
+            <View key={index} style={styles.serviceCard}>
+              {service.images && service.images.length > 0 && (
+                <Image source={{ uri: service.images[0] }} style={styles.serviceImage} />
+              )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.serviceTitle}>{service.title}</Text>
+                <Text style={styles.serviceDesc}>{service.description}</Text>
+                <Text style={styles.serviceInfo}>Price: ${service.price}</Text>
+                <Text style={styles.serviceInfo}>Delivery: {service.deliveryTime} days</Text>
+              </View>
+              <TouchableOpacity style={styles.bookBtn} onPress={() => handleBookService(service)}>
+                <Text style={styles.bookText}>📦 Book Service</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity style={styles.bookBtn} onPress={() => handleBookService(service)}>
-              <Text style={styles.bookText}>📦 Book Service</Text>
-            </TouchableOpacity>
-          </View>
-        ))
-      ) : (
-        <Text style={styles.value}>No services available.</Text>
-      )}
-    </ScrollView>
+          ))
+        ) : (
+          <Text style={styles.value}>No services available.</Text>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F4EBFF',
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F4EBFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D1B5A',
+  },
   container: {
     padding: 20,
     backgroundColor: '#F4EBFF',
-  },
-  heading: {
-    fontSize: 26,
-    fontWeight: 'bold',
-    color: '#2D1B5A',
-    textAlign: 'center',
-    marginBottom: 20,
   },
   avatar: {
     width: 110,
@@ -199,32 +228,33 @@ const styles = StyleSheet.create({
   },
   serviceTitle: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 4,
   },
   serviceDesc: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#666',
     marginBottom: 4,
   },
   serviceInfo: {
     fontSize: 12,
-    color: '#999',
+    color: '#888',
   },
   bookBtn: {
     backgroundColor: '#5A31F4',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
+    padding: 8,
+    borderRadius: 8,
+    alignItems: 'center',
   },
   bookText: {
     color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 14,
+    fontSize: 12,
+    fontWeight: '600',
   },
   error: {
-    color: 'red',
-    fontSize: 16,
-    padding: 20,
     textAlign: 'center',
+    marginTop: 40,
+    color: '#666',
   },
 });

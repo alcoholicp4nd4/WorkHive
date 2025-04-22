@@ -5,6 +5,8 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { View, Text, ActivityIndicator, Platform } from "react-native";
 import * as Linking from "expo-linking";
 import { getCurrentUser } from "./database/authDatabase";
+import { auth } from "./database/firebaseConfig";
+import { onAuthStateChanged } from "firebase/auth";
 import LoginScreen from "./pages/LoginScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import HomeScreen from "./pages/HomeScreen";
@@ -24,6 +26,7 @@ import ProfileSetupScreen from "./pages/ProfileSetupScreen";
 import UserProfileScreen from "./pages/UserProfileScreen";
 import EditProfileScreen from "./pages/EditProfileScreen";
 import PublicProfileScreen from "./pages/PublicProfileScreen";
+import CategoryScreen from "./pages/CategoryScreen";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -56,27 +59,29 @@ function MainAppTabs() {
       <Tab.Screen name="Search" component={SearchScreen} />
       <Tab.Screen name="Account" component={AccountScreen} />
       <Tab.Screen name="Chats" component={ChatsScreen} />
-      <Tab.Screen name="MyBooking" component={MyBookingsScreen} />
-      <Tab.Screen name="BookedServices" component={ProviderBookingsScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
-    const checkUser = async () => {
-      try {
-        await getCurrentUser();
-      } catch (err) {
-        console.error("⚠️ Error fetching user:", err);
-      } finally {
-        setLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        // User is signed in
+        const userData = await getCurrentUser();
+        setUser(userData);
+      } else {
+        // User is signed out
+        setUser(null);
       }
-    };
+      setLoading(false);
+    });
 
-    checkUser();
+    // Cleanup subscription
+    return () => unsubscribe();
   }, []);
 
   if (loading) {
@@ -98,15 +103,11 @@ export default function App() {
   return (
     <NavigationContainer linking={linking}>
       <Stack.Navigator
-        initialRouteName="Login"
         screenOptions={{ headerShown: false }}
+        initialRouteName={user ? "MainApp" : "Login"}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
-        <Stack.Screen
-          name="ProfileSetupScreen"
-          component={ProfileSetupScreen}
-        />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
         <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} />
         <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />
@@ -117,12 +118,10 @@ export default function App() {
         <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
         <Stack.Screen name="MyBooking" component={MyBookingsScreen} />
         <Stack.Screen name="PublicProfileScreen" component={PublicProfileScreen} />
-        <Stack.Screen
-          name="BookedServices"
-          component={ProviderBookingsScreen}
-        />
+        <Stack.Screen name="BookedServices" component={ProviderBookingsScreen} />
         <Stack.Screen name="BookingDetails" component={BookingDetailsScreen} />
         <Stack.Screen name="ReportForm" component={ReportForm} />
+        <Stack.Screen name="Category" component={CategoryScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { View, TouchableOpacity, Text, Modal, FlatList, StyleSheet, Pressable } from 'react-native';
-import { collection, query, where, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
@@ -95,8 +95,36 @@ export default function NotificationBell({ navigation }) {
     };
   }, [userId]);
 
+  const markNotificationsAsRead = async () => {
+    if (!userId) return;
+
+    try {
+      // Get all unread notifications
+      const notificationsRef = collection(db, 'notifications');
+      const q = query(
+        notificationsRef,
+        where('userId', '==', userId),
+        where('read', '==', false)
+      );
+      const querySnapshot = await getDocs(q);
+
+      // Update each notification to mark as read
+      const updatePromises = querySnapshot.docs.map(doc => 
+        updateDoc(doc.ref, { read: true })
+      );
+
+      await Promise.all(updatePromises);
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+    }
+  };
+
   const handleBellPress = () => {
     setVisible(!visible);
+    if (!visible) {
+      markNotificationsAsRead();
+    }
   };
 
   const handleNotificationPress = (notification) => {

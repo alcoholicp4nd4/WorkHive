@@ -16,6 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Clock, Calendar, MapPin, User, DollarSign, AlertCircle, Flag } from 'lucide-react-native';
+import ServiceRating from '../components/ServiceRating';
 
 export default function BookingDetailsScreen({ route }) {
   const { bookingId, serviceId, providerId } = route.params;
@@ -164,6 +165,19 @@ export default function BookingDetailsScreen({ route }) {
           <Text style={styles.description}>{service?.description}</Text>
         </View>
 
+        {/* Rating Section - Only show for completed bookings */}
+        {booking?.status === 'completed' && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Rate this Service</Text>
+            <ServiceRating 
+              serviceId={serviceId} 
+              onRatingSubmit={(rating) => {
+                Alert.alert('Success', 'Thank you for your rating!');
+              }}
+            />
+          </View>
+        )}
+
         {/* Cancellation Policy */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cancellation Policy</Text>
@@ -251,9 +265,9 @@ const styles = StyleSheet.create({
     height: 200,
   },
   section: {
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    padding: 20,
+    backgroundColor: '#fff',
+    marginBottom: 10,
   },
   serviceTitle: {
     fontSize: 24,
@@ -286,8 +300,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '600',
+    marginBottom: 10,
+    color: '#333',
   },
   description: {
     fontSize: 16,

@@ -1,127 +1,89 @@
-import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, StyleSheet, ImageBackground, FlatList } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
-import NotificationBell from '../Components/NotificationBell';
+import NotificationBell from '../components/NotificationBell';
 
 const headerImage = { uri: 'https://www.shutterstock.com/image-photo/happy-mid-aged-business-woman-600nw-2353012835.jpg' };
+
 const categories = [
   {
-    id: 1,
-    name: 'Home Services',
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&q=80&w=400',
-    count: 150,
+    id: 'tech',
+    name: 'Tech',
+    subcategories: [
+      { id: 'web-development', name: 'Web Development' },
+      { id: 'mobile-app-development', name: 'Mobile App Development' },
+      { id: 'software-engineering', name: 'Software Engineering' },
+      { id: 'ui-ux-design', name: 'UI/UX Design' },
+      { id: 'qa-testing', name: 'QA Testing' },
+      { id: 'game-development', name: 'Game Development' },
+      { id: 'devops-cloud', name: 'DevOps & Cloud' }
+    ]
   },
   {
-    id: 2,
-    name: 'Beauty & Wellness',
-    image: 'https://images.unsplash.com/photo-1560750588-73207b1ef5b8?auto=format&fit=crop&q=80&w=400',
-    count: 120,
+    id: 'design',
+    name: 'Design',
+    subcategories: [
+      { id: 'graphic-design', name: 'Graphic Design' },
+      { id: 'logo-design', name: 'Logo Design' },
+      { id: 'animation', name: 'Animation' },
+      { id: 'video-editing', name: 'Video Editing' },
+      { id: 'photography', name: 'Photography' },
+      { id: 'branding', name: 'Branding & Identity' },
+      { id: 'illustration', name: 'Illustration' }
+    ]
   },
   {
-    id: 3,
-    name: 'Professional',
-    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=400',
-    count: 85,
+    id: 'business',
+    name: 'Business',
+    subcategories: [
+      { id: 'seo', name: 'SEO Optimization' },
+      { id: 'digital-marketing', name: 'Digital Marketing' },
+      { id: 'social-media', name: 'Social Media Management' },
+      { id: 'email-marketing', name: 'Email Marketing' },
+      { id: 'copywriting', name: 'Copywriting' },
+      { id: 'business-consulting', name: 'Business Consulting' },
+      { id: 'sales-strategy', name: 'Sales Strategy' }
+    ]
   },
   {
-    id: 4,
+    id: 'local',
+    name: 'Local Services',
+    subcategories: [
+      { id: 'plumbing', name: 'Plumbing' },
+      { id: 'electrical', name: 'Electrical Work' },
+      { id: 'cleaning', name: 'Cleaning' },
+      { id: 'moving', name: 'Moving Services' },
+      { id: 'handyman', name: 'Handyman Services' },
+      { id: 'pest-control', name: 'Pest Control' },
+      { id: 'landscaping', name: 'Landscaping' }
+    ]
+  },
+  {
+    id: 'education',
     name: 'Education',
-    image: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=400',
-    count: 95,
+    subcategories: [
+      { id: 'tutoring', name: 'Tutoring' },
+      { id: 'language-teaching', name: 'Language Teaching' },
+      { id: 'life-coaching', name: 'Life Coaching' },
+      { id: 'career-coaching', name: 'Career Coaching' },
+      { id: 'test-prep', name: 'Test Preparation' }
+    ]
   },
   {
-    id: 5,
-    name: 'Digital Marketing',
-    image: 'https://images.unsplash.com/photo-1581092336626-b7a543c67b79?auto=format&fit=crop&q=80&w=400',
-    count: 110,
-  },
-  {
-    id: 6,
-    name: 'IT & Tech Support',
-    image: 'https://images.unsplash.com/photo-1556761175-b413da4baf72?auto=format&fit=crop&q=80&w=400',
-    count: 90,
-  },
-  {
-    id: 7,
-    name: 'Legal & Financial Services',
-    image: 'https://images.unsplash.com/photo-1554224154-22dec7ec8818?auto=format&fit=crop&q=80&w=400',
-    count: 70,
-  },
-  {
-    id: 8,
-    name: 'Health & Wellness',
-    image: 'https://images.unsplash.com/photo-1579722823961-dc78e3b9c63b?auto=format&fit=crop&q=80&w=400',
-    count: 130,
-  },
-  {
-    id: 9,
-    name: 'Event Planning',
-    image: 'https://images.unsplash.com/photo-1555685812-4b943f1cb0eb?auto=format&fit=crop&q=80&w=400',
-    count: 80,
-  },
-  {
-    id: 10,
-    name: 'Automotive Services',
-    image: 'https://images.unsplash.com/photo-1608138278428-2d469735f6eb?auto=format&fit=crop&q=80&w=400',
-    count: 75,
-  },
-  {
-    id: 11,
-    name: 'Photography & Videography',
-    image: 'https://images.unsplash.com/photo-1512790182412-b19e6d62bc39?auto=format&fit=crop&q=80&w=400',
-    count: 95,
-  },
-  {
-    id: 12,
-    name: 'Writing & Translation',
-    image: 'https://images.unsplash.com/photo-1584697964192-f230d51468e7?auto=format&fit=crop&q=80&w=400',
-    count: 85,
-  },
-  {
-    id: 13,
-    name: 'Home Renovation & Repairs',
-    image: 'https://images.unsplash.com/photo-1592194996308-7b43878e84a1?auto=format&fit=crop&q=80&w=400',
-    count: 140,
-  },
-  {
-    id: 14,
-    name: 'Freelance Development & Design',
-    image: 'https://images.unsplash.com/photo-1564866657311-e9cc905d29d2?auto=format&fit=crop&q=80&w=400',
-    count: 125,
-  },
-  {
-    id: 15,
-    name: 'Music & Arts Services',
-    image: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&q=80&w=400',
-    count: 60,
-  },
-  {
-    id: 16,
-    name: 'Business Consulting',
-    image: 'https://images.unsplash.com/photo-1526948128573-703ee1aeb6fa?auto=format&fit=crop&q=80&w=400',
-    count: 50,
-  },
-  {
-    id: 17,
-    name: 'Pet Services',
-    image: 'https://images.unsplash.com/photo-1560807707-8cc77767d783?auto=format&fit=crop&q=80&w=400',
-    count: 90,
-  },
-  {
-    id: 18,
-    name: 'Real Estate & Property Management',
-    image: 'https://images.unsplash.com/photo-1571939228382-b2f2b585ce15?auto=format&fit=crop&q=80&w=400',
-    count: 100,
-  },
-  {
-    id: 19,
-    name: 'Courier & Delivery Services',
-    image: 'https://images.unsplash.com/photo-1593079831268-3381b0db4a77?auto=format&fit=crop&q=80&w=400',
-    count: 85,
-  },
+    id: 'wellness',
+    name: 'Wellness',
+    subcategories: [
+      { id: 'fitness-training', name: 'Fitness Training' },
+      { id: 'yoga', name: 'Yoga Instruction' },
+      { id: 'therapy', name: 'Therapy & Counseling' },
+      { id: 'nutrition', name: 'Nutrition Planning' },
+      { id: 'beauty', name: 'Beauty & Skincare' },
+      { id: 'hair-styling', name: 'Hair Styling' }
+    ]
+  }
 ];
 
 const featuredProviders = [
@@ -179,6 +141,21 @@ export default function HomeScreen() {
     fetchUser();
   }, []);
 
+  const renderCategory = ({ item }) => (
+    <TouchableOpacity
+      style={styles.categoryCard}
+      onPress={() => navigation.navigate('Category', { 
+        category: item.name,
+        subcategories: item.subcategories 
+      })}
+    >
+      <View style={styles.categoryContent}>
+        <Text style={styles.categoryName}>{item.name}</Text>
+        <Text style={styles.subcategoryCount}>{item.subcategories.length} services</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
   return (
     <ScrollView style={styles.container}>
       <ImageBackground source={headerImage} style={styles.header} resizeMode="cover">
@@ -188,21 +165,14 @@ export default function HomeScreen() {
 
       <View style={styles.categoriesSection}>
         <Text style={styles.sectionTitle}>Categories</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriesScroll}>
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              onPress={() => navigation.navigate('Category', { id: category.id })}
-              style={styles.categoryCard}
-            >
-              <Image source={{ uri: category.image }} style={styles.categoryImage} />
-              <View style={styles.categoryInfo}>
-                <Text style={styles.categoryName}>{category.name}</Text>
-                <Text style={styles.categoryCount}>{category.count} providers</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        <FlatList
+          data={categories}
+          renderItem={renderCategory}
+          keyExtractor={item => item.id}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.categoriesList}
+        />
       </View>
 
       <View style={styles.featuredSection}>
@@ -270,39 +240,35 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     color: '#333',
   },
-  categoriesScroll: {
-    marginHorizontal: -20,
-    paddingHorizontal: 20,
+  categoriesList: {
+    paddingHorizontal: 15,
   },
   categoryCard: {
-    width: 200,
-    marginRight: 15,
-    borderRadius: 15,
-    overflow: 'hidden',
     backgroundColor: '#fff',
-    elevation: 3,
+    borderRadius: 10,
+    padding: 15,
+    marginRight: 15,
+    width: 150,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  categoryImage: {
-    width: '100%',
-    height: 120,
-  },
-  categoryInfo: {
-    padding: 12,
-    backgroundColor: '#FDDBBB',
+  categoryContent: {
+    alignItems: 'center',
   },
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
+    textAlign: 'center',
+    marginBottom: 5,
   },
-  categoryCount: {
-    fontSize: 13,
+  subcategoryCount: {
+    fontSize: 12,
     color: '#666',
-    marginTop: 2,
+    textAlign: 'center',
   },
   featuredSection: {
     padding: 20,

@@ -19,9 +19,13 @@ import {
   LogOut,
   Camera,
   User,
+  Calendar,
+  Briefcase,
 } from 'lucide-react-native';
 
 const menuItems = [
+  { icon: Calendar, label: 'My Bookings', screen: 'MyBooking' },
+  { icon: Briefcase, label: 'Provider Bookings', screen: 'BookedServices' },
   { icon: Settings, label: 'Settings' },
   { icon: Bell, label: 'Notifications' },
   { icon: CreditCard, label: 'Payment Methods' },
@@ -119,7 +123,11 @@ export default function AccountScreen() {
       {/* Menu Items */}
       <View style={styles.menuContainer}>
         {menuItems.map((item, index) => (
-          <TouchableOpacity key={index} style={styles.menuItem}>
+          <TouchableOpacity 
+            key={index} 
+            style={styles.menuItem}
+            onPress={() => item.screen ? navigation.navigate(item.screen) : null}
+          >
             <item.icon size={20} color="#4F4F4F" />
             <Text style={styles.menuLabel}>{item.label}</Text>
           </TouchableOpacity>

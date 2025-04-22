@@ -1,9 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Alert,
+  SafeAreaView,
+  Platform,
+  StatusBar
+} from 'react-native';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { sendNotification } from '../utils/notificationUtils';
+import { useNavigation } from '@react-navigation/native';
+import { ArrowLeft } from 'lucide-react-native';
 
 export default function ProviderBookingsScreen() {
   const [bookings, setBookings] = useState([]);
@@ -13,6 +25,7 @@ export default function ProviderBookingsScreen() {
   const [sortOrder, setSortOrder] = useState('desc');
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
+  const navigation = useNavigation();
   
 
   useEffect(() => {
@@ -158,7 +171,17 @@ if (booking) {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeft size={24} color="#000" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Provider Bookings</Text>
+      </View>
       <View style={styles.filterContainer}>
         <TouchableOpacity 
           style={[styles.filterBtn, sortBy === 'date' && styles.activeFilterBtn]}
@@ -185,13 +208,32 @@ if (booking) {
         renderItem={renderItem}
         contentContainerStyle={{ padding: 20 }}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
+    backgroundColor: '#F4EBFF',
+    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#F4EBFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D1B5A',
   },
   filterContainer: {
     flexDirection: 'row',

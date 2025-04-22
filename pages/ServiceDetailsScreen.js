@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { sendNotification } from '../utils/notificationUtils';
+import ServiceRating from '../components/ServiceRating';
+import FavoriteButton from '../components/FavoriteButton';
 
 const { width } = Dimensions.get('window');
 
@@ -60,6 +61,13 @@ export default function ServiceDetailsScreen({ route, navigation }) {
 
   return (
     <ScrollView style={styles.container}>
+      <TouchableOpacity 
+        style={styles.backButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.backButtonText}>← Back</Text>
+      </TouchableOpacity>
+
       <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>
         {service.images?.length > 0 ? (
           service.images.map((uri, index) => (
@@ -72,8 +80,13 @@ export default function ServiceDetailsScreen({ route, navigation }) {
 
       <View style={styles.content}>
         <Text style={styles.title}>{service.title}</Text>
-        <Text style={styles.subtitle}>by {service.username}</Text>
+        <View style={styles.titleRow}>
+          <Text style={styles.subtitle}>by {service.username}</Text>
+          <FavoriteButton serviceId={service.id} />
+        </View>
         <Text style={styles.category}>Category: {service.category}</Text>
+
+        <ServiceRating serviceId={service.id} readOnly={true} />
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Description</Text>
@@ -118,6 +131,26 @@ export default function ServiceDetailsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#fff',
+  },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  backButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   image: {
     width,
@@ -196,5 +229,11 @@ const styles = StyleSheet.create({
     color: '#7A42D3',
     fontWeight: '600',
     fontSize: 15,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: -4,
   },
 });

@@ -1,43 +1,123 @@
-import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { db } from '../database/firebaseConfig';
+import { getAuth } from 'firebase/auth';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
-const favoriteProviders = [
-  {
-    id: 1,
-    name: 'Sarah Johnson',
-    service: 'Interior Designer',
-    rating: 4.9,
-    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400',
-  },
-  {
-    id: 2,
-    name: 'Michael Chen',
-    service: 'Personal Trainer',
-    rating: 4.8,
-    image: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?auto=format&fit=crop&q=80&w=400',
-  },
-];
+export default function FavoriteScreen() {
+  const [favorites, setFavorites] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const navigation = useNavigation();
+  const auth = getAuth();
+  const currentUser = auth.currentUser;
 
-export default function Favorites() {
+  const fetchFavorites = async () => {
+    try {
+      // Get user's favorite service IDs
+      const favoritesRef = collection(db, 'favorites');
+      const q = query(favoritesRef, where('userId', '==', currentUser.uid));
+      const querySnapshot = await getDocs(q);
+      
+      const favoriteIds = querySnapshot.docs.map(doc => doc.data().serviceId);
+      
+      if (favoriteIds.length === 0) {
+        setFavorites([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch the actual service details
+      const services = [];
+      for (const serviceId of favoriteIds) {
+        const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+        if (serviceDoc.exists()) {
+          services.push({ id: serviceId, ...serviceDoc.data() });
+        }
+      }
+
+      setFavorites(services);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      if (currentUser) {
+        fetchFavorites();
+      }
+    }, [currentUser])
+  );
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchFavorites();
+  }, []);
+
+  const renderService = ({ item }) => (
+    <TouchableOpacity
+      style={styles.serviceCard}
+      onPress={() => navigation.navigate('ServiceDetails', { service: item })}
+    >
+      <Image
+        source={{ uri: item.images?.[0] || 'https://via.placeholder.com/300' }}
+        style={styles.serviceImage}
+      />
+      <View style={styles.serviceInfo}>
+        <Text style={styles.serviceTitle}>{item.title}</Text>
+        <Text style={styles.servicePrice}>
+          {item.priceType === 'hourly' ? `$${item.price}/hr` : `$${item.price}`}
+        </Text>
+        <Text style={styles.serviceProvider}>by {item.username}</Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+        <Text>Loading favorites...</Text>
+      </View>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>Please login to view your favorites</Text>
+      </View>
+    );
+  }
+
+  if (favorites.length === 0) {
+    return (
+      <View style={styles.emptyContainer}>
+        <Text style={styles.emptyText}>No favorite services yet</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Favorites</Text>
-      </View>
-
       <FlatList
-        data={favoriteProviders}
-        keyExtractor={(item) => item.id.toString()}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.providerCard}>
-            <Image source={{ uri: item.image }} style={styles.providerImage} />
-            <View style={styles.providerInfo}>
-              <Text style={styles.providerName}>{item.name}</Text>
-              <Text style={styles.providerService}>{item.service}</Text>
-              <Text style={styles.rating}>★ {item.rating}</Text>
-            </View>
-          </TouchableOpacity>
-        )}
+        data={favorites}
+        renderItem={renderService}
+        keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#5A31F4']}
+          />
+        }
       />
     </View>
   );
@@ -48,48 +128,57 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: '#CB9DF0',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
   listContainer: {
-    padding: 20,
-  },
-  providerCard: {
-    flexDirection: 'row',
-    backgroundColor: '#F0C1E1',
-    borderRadius: 15,
-    marginBottom: 15,
-    overflow: 'hidden',
-  },
-  providerImage: {
-    width: 100,
-    height: 100,
-  },
-  providerInfo: {
-    flex: 1,
     padding: 15,
   },
-  providerName: {
+  serviceCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    marginBottom: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  serviceImage: {
+    width: '100%',
+    height: 200,
+    borderTopLeftRadius: 10,
+    borderTopRightRadius: 10,
+  },
+  serviceInfo: {
+    padding: 15,
+  },
+  serviceTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333',
+    marginBottom: 5,
   },
-  providerService: {
+  servicePrice: {
+    fontSize: 16,
+    color: '#5A31F4',
+    fontWeight: '600',
+    marginBottom: 5,
+  },
+  serviceProvider: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
-  },
-  rating: {
-    fontSize: 14,
-    color: '#333',
-    fontWeight: '500',
-    marginTop: 8,
   },
 });
