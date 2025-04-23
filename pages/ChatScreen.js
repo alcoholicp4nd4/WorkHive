@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, Button, FlatList, StyleSheet } from 'react-native';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, useNavigation } from '@react-navigation/native';
 import { db } from '../database/firebaseConfig';
 import {
   collection,
@@ -16,12 +16,46 @@ import {
 
 export default function ChatScreen() {
   const route = useRoute();
+  const navigation = useNavigation();
   const { currentUserId, providerId } = route.params || {};
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  const [providerName, setProviderName] = useState('Loading...');
 
   const conversationId = [currentUserId, providerId].sort().join('_');
   const messagesRef = collection(db, 'conversations', conversationId, 'messages');
+
+  useEffect(() => {
+    const fetchProviderDetails = async () => {
+      if (!providerId) return;
+      try {
+        const providerDocRef = doc(db, 'users', providerId);
+        const providerDoc = await getDoc(providerDocRef);
+        if (providerDoc.exists()) {
+          const name = providerDoc.data().username || providerDoc.data().name || 'Provider';
+          setProviderName(name);
+        } else {
+          setProviderName('Provider Not Found');
+        }
+      } catch (error) {
+        console.error("Error fetching provider details:", error);
+        setProviderName('Error');
+      }
+    };
+
+    fetchProviderDetails();
+  }, [providerId]);
+
+  useEffect(() => {
+    navigation.setOptions({
+      headerTitle: () => (
+        <View style={styles.headerTitleContainer}>
+          <View style={styles.statusDot} />
+          <Text style={styles.headerTitleText}>{providerName}</Text>
+        </View>
+      ),
+    });
+  }, [navigation, providerName]);
 
   useEffect(() => {
     const loadMessages = async () => {
@@ -85,6 +119,22 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: '#EAE2F8', 
     padding: 10
+  },
+  headerTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  statusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: 'green',
+    marginRight: 8,
+  },
+  headerTitleText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2D0A59',
   },
   messageContainer: {
     padding: 10,
