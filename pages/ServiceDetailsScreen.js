@@ -4,8 +4,8 @@ import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { sendNotification } from '../utils/notificationUtils';
-import ServiceRating from '../components/ServiceRating';
-import FavoriteButton from '../components/FavoriteButton';
+import ServiceRating from '../Components/ServiceRating';
+import FavoriteButton from '../Components/FavoriteButton';
 
 const { width } = Dimensions.get('window');
 

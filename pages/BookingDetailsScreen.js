@@ -16,7 +16,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Clock, Calendar, MapPin, User, DollarSign, AlertCircle, Flag } from 'lucide-react-native';
-import ServiceRating from '../components/ServiceRating';
+import ServiceRating from '../Components/ServiceRating';
 
 export default function BookingDetailsScreen({ route }) {
   const { bookingId, serviceId, providerId } = route.params;

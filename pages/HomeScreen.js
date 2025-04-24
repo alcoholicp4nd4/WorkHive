@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase'; // make sure this exists
-import NotificationBell from '../components/NotificationBell';
+import NotificationBell from '../Components/NotificationBell';
 
 const headerImage = { uri: 'https://www.shutterstock.com/image-photo/happy-mid-aged-business-woman-600nw-2353012835.jpg' };
 
