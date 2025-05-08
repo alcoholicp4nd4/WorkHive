@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, Image, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Alert, Modal, TextInput } from 'react-native';
 import { getAuth } from 'firebase/auth';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
@@ -14,6 +14,8 @@ export default function ServiceDetailsScreen({ route, navigation }) {
   const { service } = route.params;
   const auth = getAuth();
   const currentUser = auth.currentUser;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [message, setMessage] = useState('');
 
   const handleBookService = async () => {
     if (!service.userId) {
@@ -35,6 +37,16 @@ export default function ServiceDetailsScreen({ route, navigation }) {
           return;
         }
       }
+      setModalVisible(true);
+    } catch (error) {
+      console.error('Booking error:', error);
+      Alert.alert('Error', 'Failed to book the service.');
+    }
+  };
+
+  const handleConfirmBooking = async () => {
+    try {
+      const bookingsRef = collection(db, 'bookings');
       await sendNotification(
         service.userId,
         'booking',
@@ -45,8 +57,11 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         providerId: service.userId,
         userId: currentUser.uid,
         status: 'pending',
+        message: message || '',
         createdAt: serverTimestamp(),
       });
+      setModalVisible(false);
+      setMessage('');
       Alert.alert('Success', 'Service booked successfully!');
     } catch (error) {
       console.error('Booking error:', error);
@@ -99,6 +114,16 @@ export default function ServiceDetailsScreen({ route, navigation }) {
           <TouchableOpacity style={styles.lightButton}>
             <Text style={styles.lightButtonText}>💬 Contact Provider</Text>
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.lightButton}
+            onPress={() => navigation.navigate('Chat', {
+              bookingId: service.id,
+              otherUserId: service.userId,
+              otherUsername: service.username
+            })}
+          >
+            <Text style={styles.lightButtonText}>💬 Chat with Provider</Text>
+          </TouchableOpacity>
           <TouchableOpacity style={styles.lightButton} onPress={handleBookService}>
             <Text style={styles.lightButtonText}>📦 Book Service</Text>
           </TouchableOpacity>
@@ -119,6 +144,45 @@ export default function ServiceDetailsScreen({ route, navigation }) {
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
         <MaterialIcons name="arrow-back" size={24} color="#5A31F4" />
       </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Add a Message</Text>
+            <Text style={styles.modalSubtitle}>Enter a message for the service provider (optional):</Text>
+            <TextInput
+              style={styles.messageInput}
+              multiline
+              numberOfLines={4}
+              placeholder="Type your message here..."
+              value={message}
+              onChangeText={setMessage}
+            />
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton]} 
+                onPress={() => {
+                  setModalVisible(false);
+                  setMessage('');
+                }}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.confirmButton]} 
+                onPress={handleConfirmBooking}
+              >
+                <Text style={styles.modalButtonText}>Book Service</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -260,5 +324,70 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 4,
     elevation: 3,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    width: '90%',
+    maxWidth: 400,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D1B5A',
+    marginBottom: 10,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+  },
+  messageInput: {
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 10,
+  },
+  modalButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    minWidth: 100,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 16,
+  },
+  cancelButton: {
+    backgroundColor: '#6B7280',
+  },
+  confirmButton: {
+    backgroundColor: '#5A31F4',
   },
 });
