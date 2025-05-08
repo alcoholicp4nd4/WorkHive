@@ -5,6 +5,7 @@ import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
+import { sendNotification } from '../utils/notificationUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -87,6 +88,23 @@ export default function MyBookingsScreen() {
 
     if (hoursDifference <= 24) {
       try {
+        const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+        const booking = bookingDoc.data();
+        if (booking) {
+          const serviceDoc = await getDoc(doc(db, 'services', booking.serviceId));
+          const service = serviceDoc.data();
+
+          if (service) {
+            await sendNotification(
+              booking.providerId,
+              'booking_cancellation',
+              `Your booking for "${service.title}" has been canceled by the customer.`,
+              bookingId
+            );
+          } else {
+            console.error('Service not found for booking:', booking.serviceId);
+          }
+        }
         await deleteDoc(doc(db, 'bookings', bookingId));
         Alert.alert('Success', 'Booking cancelled successfully.');
       } catch (error) {

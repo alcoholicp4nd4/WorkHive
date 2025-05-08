@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, TouchableOpacity, Text, Modal, FlatList, StyleSheet, Pressable } from 'react-native';
-import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { View, TouchableOpacity, Text, Modal, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { collection, query, where, orderBy, onSnapshot, updateDoc, doc, getDocs, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,84 +15,25 @@ export default function NotificationBell({ navigation }) {
   useEffect(() => {
     if (!userId) return;
 
-    // Listen for notifications where user is recipient (customer)
-    const customerQuery = query(
+    // Listen for notifications where user is recipient
+    const notificationsQuery = query(
       collection(db, 'notifications'),
       where('userId', '==', userId),
       orderBy('createdAt', 'desc')
     );
 
-    // Listen for notifications where user is provider (services booked from them)
-    // This assumes you store providerId in the booking and notification has relatedBookingId
-    // We'll fetch bookings where providerId == userId, then notifications for those bookings
-    let unsubscribeBookings = () => {};
-    let unsubscribeCustomer = onSnapshot(customerQuery, (snapshot) => {
-      const customerNotifications = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setNotifications(prev => {
-        // Merge with provider notifications if already loaded
-        const providerNotifications = prev.filter(n => n._source === 'provider');
-        return [
-          ...customerNotifications.map(n => ({ ...n, _source: 'customer' })),
-          ...providerNotifications
-        ].sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
-      });
-      setUnreadCount(customerNotifications.filter(n => !n.read).length);
+    const unsubscribe = onSnapshot(notificationsQuery, (snapshot) => {
+      const notificationsData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+      
+      setNotifications(notificationsData);
+      setUnreadCount(notificationsData.filter(n => !n.read).length);
     });
 
-    // Fetch bookings where user is provider
-    const bookingsQuery = query(
-      collection(db, 'bookings'),
-      where('providerId', '==', userId)
-    );
-    unsubscribeBookings = onSnapshot(bookingsQuery, async (bookingSnapshot) => {
-      const bookingIds = bookingSnapshot.docs.map(doc => doc.id);
-      if (bookingIds.length === 0) return;
-
-      // Listen for notifications related to these bookings
-      const notificationsRef = collection(db, 'notifications');
-      // Firestore doesn't support "in" queries with more than 10 items, so batch if needed
-      const batches = [];
-      for (let i = 0; i < bookingIds.length; i += 10) {
-        const batchIds = bookingIds.slice(i, i + 10);
-        batches.push(
-          query(
-            notificationsRef,
-            where('relatedBookingId', 'in', batchIds),
-            orderBy('createdAt', 'desc')
-          )
-        );
-      }
-      let providerNotifications = [];
-      await Promise.all(
-        batches.map(batchQuery =>
-          new Promise(resolve => {
-            onSnapshot(batchQuery, (snapshot) => {
-              providerNotifications = providerNotifications.concat(
-                snapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), _source: 'provider' }))
-              );
-              resolve();
-            });
-          })
-        )
-      );
-      setNotifications(prev => {
-        // Merge with customer notifications if already loaded
-        const customerNotifications = prev.filter(n => n._source === 'customer');
-        return [
-          ...customerNotifications,
-          ...providerNotifications
-        ].sort((a, b) => b.createdAt?.seconds - a.createdAt?.seconds);
-      });
-      setUnreadCount(prev => {
-        // Recalculate unread count
-        return notifications.filter(n => !n.read).length;
-      });
-    });
-
-    return () => {
-      unsubscribeCustomer();
-      unsubscribeBookings();
-    };
+    return () => unsubscribe();
   }, [userId]);
 
   const markNotificationsAsRead = async () => {
@@ -127,12 +68,46 @@ export default function NotificationBell({ navigation }) {
     }
   };
 
-  const handleNotificationPress = (notification) => {
+  const handleNotificationPress = async (notification) => {
     setVisible(false);
-    // Optionally mark as read here
-    // navigation to booking or service details if needed
-    if (notification.relatedBookingId) {
-      navigation.navigate('BookingDetailsScreen', { bookingId: notification.relatedBookingId });
+    
+    try {
+      // Check if the notification still exists in the database
+      const notificationDoc = await getDoc(doc(db, 'notifications', notification.id));
+      if (!notificationDoc.exists()) {
+        Alert.alert('Notification Deleted', 'This notification has been deleted.');
+        return;
+      }
+
+      // If the notification is for a booking cancellation, do not navigate
+      if (notification.type === 'booking_cancellation') {
+        Alert.alert('Booking Canceled', 'This booking has been canceled.');
+        return; // Do not navigate anywhere
+      }
+
+      // Navigate based on notification type
+      if (notification.type === 'booking' && notification.relatedBookingId) {
+        // Get the booking details to determine the navigation
+        const bookingDoc = await getDoc(doc(db, 'bookings', notification.relatedBookingId));
+        if (bookingDoc.exists()) {
+          const booking = bookingDoc.data();
+          
+          // Check if current user is the provider or customer
+          if (booking.providerId === userId) {
+            // User is the provider, navigate to provider bookings
+            navigation.navigate('BookedServices');
+          } else if (booking.userId === userId) {
+            // User is the customer, navigate to booking details
+            navigation.navigate('BookingDetails', {
+              bookingId: notification.relatedBookingId,
+              serviceId: booking.serviceId,
+              providerId: booking.providerId
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling notification press:', error);
     }
   };
 
@@ -144,10 +119,13 @@ export default function NotificationBell({ navigation }) {
       ]}
       onPress={() => handleNotificationPress(item)}
     >
-      <Text style={styles.notificationText}>{item.message}</Text>
-      <Text style={styles.notificationType}>
-        {item._source === 'customer' ? 'As Customer' : 'As Provider'}
-      </Text>
+      <View style={styles.notificationContent}>
+        <Text style={styles.notificationText}>{item.message}</Text>
+        <Text style={styles.notificationTime}>
+          {item.createdAt?.toLocaleString()}
+        </Text>
+      </View>
+      {!item.read && <View style={styles.unreadDot} />}
     </Pressable>
   );
 
@@ -157,7 +135,9 @@ export default function NotificationBell({ navigation }) {
         <Ionicons name="notifications-outline" size={28} color="#333" />
         {unreadCount > 0 && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>{unreadCount}</Text>
+            <Text style={styles.badgeText}>
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </Text>
           </View>
         )}
       </TouchableOpacity>
@@ -177,7 +157,7 @@ export default function NotificationBell({ navigation }) {
                 data={notifications}
                 keyExtractor={item => item.id}
                 renderItem={renderNotification}
-                style={{ maxHeight: 300 }}
+                style={styles.notificationList}
               />
             )}
           </View>
@@ -231,27 +211,44 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
     marginBottom: 8,
+    color: '#2D1B5A',
   },
   emptyText: {
     color: '#888',
     textAlign: 'center',
     marginTop: 20,
   },
+  notificationList: {
+    maxHeight: 300,
+  },
   notificationItem: {
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
     borderBottomColor: '#eee',
     borderBottomWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   unreadNotification: {
     backgroundColor: '#F0F6FF',
   },
+  notificationContent: {
+    flex: 1,
+  },
   notificationText: {
     fontSize: 14,
-    color: '#222',
+    color: '#2D1B5A',
+    marginBottom: 4,
   },
-  notificationType: {
-    fontSize: 11,
-    color: '#888',
-    marginTop: 2,
+  notificationTime: {
+    fontSize: 12,
+    color: '#666',
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#5A31F4',
+    marginLeft: 8,
   },
 });

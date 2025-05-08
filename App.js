@@ -7,6 +7,8 @@ import * as Linking from "expo-linking";
 import { getCurrentUser } from "./database/authDatabase";
 import { auth } from "./database/firebaseConfig";
 import { onAuthStateChanged } from "firebase/auth";
+import { collection, query, where, onSnapshot, getDocs } from "firebase/firestore";
+import { db } from "./database/firebaseConfig";
 import LoginScreen from "./pages/LoginScreen";
 import RegisterScreen from "./pages/RegisterScreen";
 import HomeScreen from "./pages/HomeScreen";
@@ -28,6 +30,7 @@ import EditProfileScreen from "./pages/EditProfileScreen";
 import PublicProfileScreen from "./pages/PublicProfileScreen";
 import CategoryScreen from "./pages/CategoryScreen";
 import { Home as HomeIcon, Heart, Search as SearchIcon, User, MessageCircle } from 'lucide-react-native';
+import { getAuth } from "firebase/auth";
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -53,6 +56,28 @@ const linking = {
 };
 
 function MainAppTabs() {
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const auth = getAuth();
+    const currentUserId = auth.currentUser?.uid;
+
+    if (!currentUserId) return;
+
+    // Listen for unread messages
+    const q = query(
+      collection(db, 'messages'),
+      where('receiverId', '==', currentUserId),
+      where('read', '==', false)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setUnreadCount(snapshot.docs.length);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   return (
     <Tab.Navigator>
       <Tab.Screen 
@@ -87,7 +112,32 @@ function MainAppTabs() {
         name="Chats" 
         component={ChatsScreen} 
         options={{
-          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size || 24} />,
+          tabBarIcon: ({ color, size }) => (
+            <View>
+              <MessageCircle color={color} size={size || 24} />
+              {unreadCount > 0 && (
+                <View style={{
+                  position: 'absolute',
+                  right: -6,
+                  top: -6,
+                  backgroundColor: '#FF3B30',
+                  borderRadius: 10,
+                  minWidth: 20,
+                  height: 20,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}>
+                  <Text style={{
+                    color: 'white',
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                  }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </View>
+          ),
         }}
       />
     </Tab.Navigator>

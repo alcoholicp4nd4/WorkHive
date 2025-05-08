@@ -12,11 +12,12 @@ import {
   Platform,
   StatusBar
 } from 'react-native';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft, Clock, Calendar, MapPin, User, Landmark, AlertCircle, Flag } from 'lucide-react-native';
 import ServiceRating from '../Components/ServiceRating';
+import { sendNotification } from '../utils/notificationUtils';
 
 export default function BookingDetailsScreen({ route }) {
   const { bookingId, serviceId, providerId } = route.params;
@@ -200,9 +201,26 @@ export default function BookingDetailsScreen({ route }) {
                       { text: 'No', style: 'cancel' },
                       { 
                         text: 'Yes', 
-                        onPress: () => { 
-                          // Actual cancel logic needed here
-                           navigation.goBack(); 
+                        onPress: async () => {
+                          try {
+                            // Update booking status to cancelled
+                            await updateDoc(doc(db, 'bookings', bookingId), {
+                              status: 'cancelled'
+                            });
+
+                            // Send notification to provider
+                            await sendNotification(
+                              providerId,
+                              'status_update',
+                              `Booking for "${service?.title}" has been cancelled by the customer.`,
+                              bookingId
+                            );
+
+                            navigation.goBack();
+                          } catch (error) {
+                            console.error('Error cancelling booking:', error);
+                            Alert.alert('Error', 'Failed to cancel the booking.');
+                          }
                         }
                       }
                     ]

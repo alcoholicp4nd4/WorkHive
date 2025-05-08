@@ -47,12 +47,7 @@ export default function ServiceDetailsScreen({ route, navigation }) {
   const handleConfirmBooking = async () => {
     try {
       const bookingsRef = collection(db, 'bookings');
-      await sendNotification(
-        service.userId,
-        'booking',
-        `You have a new booking for "${service.title}".`
-      );
-      await addDoc(bookingsRef, {
+      const newBooking = await addDoc(bookingsRef, {
         serviceId: service.id,
         providerId: service.userId,
         userId: currentUser.uid,
@@ -60,6 +55,15 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         message: message || '',
         createdAt: serverTimestamp(),
       });
+
+      // Send notification to the provider
+      await sendNotification(
+        service.userId,
+        'booking',
+        `New booking request for "${service.title}"`,
+        newBooking.id
+      );
+
       setModalVisible(false);
       setMessage('');
       Alert.alert('Success', 'Service booked successfully!');
@@ -111,19 +115,6 @@ export default function ServiceDetailsScreen({ route, navigation }) {
           <Text style={styles.sectionTitle}>Description</Text>
           <Text style={styles.description}>{service.description}</Text>
           <View style={styles.sectionSpacing} />
-          <TouchableOpacity style={styles.lightButton}>
-            <Text style={styles.lightButtonText}>💬 Contact Provider</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.lightButton}
-            onPress={() => navigation.navigate('Chat', {
-              bookingId: service.id,
-              otherUserId: service.userId,
-              otherUsername: service.username
-            })}
-          >
-            <Text style={styles.lightButtonText}>💬 Chat with Provider</Text>
-          </TouchableOpacity>
           <TouchableOpacity style={styles.lightButton} onPress={handleBookService}>
             <Text style={styles.lightButtonText}>📦 Book Service</Text>
           </TouchableOpacity>

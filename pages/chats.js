@@ -8,11 +8,13 @@ import {
   SafeAreaView,
   StatusBar,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { collection, query, where, orderBy, onSnapshot, getDocs, getDoc, doc, limit } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function ChatsScreen({ navigation }) {
   const [conversations, setConversations] = useState([]);
@@ -21,85 +23,94 @@ export default function ChatsScreen({ navigation }) {
   const auth = getAuth();
   const currentUserId = auth.currentUser?.uid;
 
-  useEffect(() => {
-    const fetchConversations = async () => {
-      try {
-        setLoading(true);
-        // Get bookings based on selected role
-        const bookingsQuery = query(
-          collection(db, 'bookings'),
-          where(selectedRole === 'customer' ? 'userId' : 'providerId', '==', currentUserId)
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      // Get bookings based on selected role
+      const bookingsQuery = query(
+        collection(db, 'bookings'),
+        where(selectedRole === 'customer' ? 'userId' : 'providerId', '==', currentUserId)
+      );
+
+      const bookingsSnapshot = await getDocs(bookingsQuery);
+      const allBookings = bookingsSnapshot.docs.map(doc => ({ 
+        id: doc.id,
+        ...doc.data(),
+        isUser: selectedRole === 'customer' 
+      }));
+
+      // Get the latest message and unread count for each booking
+      const conversationsPromises = allBookings.map(async (booking) => {
+        // Get the other user's details first
+        const otherUserId = booking.isUser ? booking.providerId : booking.userId;
+        const otherUserDoc = await getDoc(doc(db, 'users', otherUserId));
+        const otherUser = otherUserDoc.data();
+
+        // Get the service details
+        const serviceDoc = await getDoc(doc(db, 'services', booking.serviceId));
+        const service = serviceDoc.data();
+
+        // Get unread messages count
+        const unreadQuery = query(
+          collection(db, 'messages'),
+          where('bookingId', '==', booking.id),
+          where('receiverId', '==', currentUserId),
+          where('read', '==', false)
         );
+        const unreadSnapshot = await getDocs(unreadQuery);
+        const unreadCount = unreadSnapshot.docs.length;
 
-        const bookingsSnapshot = await getDocs(bookingsQuery);
-        const allBookings = bookingsSnapshot.docs.map(doc => ({ 
-          id: doc.id, 
-          ...doc.data(), 
-          isUser: selectedRole === 'customer' 
-        }));
-
-        // Get the latest message for each booking
-        const conversationsPromises = allBookings.map(async (booking) => {
-          // Get the other user's details first
-          const otherUserId = booking.isUser ? booking.providerId : booking.userId;
-          const otherUserDoc = await getDoc(doc(db, 'users', otherUserId));
-          const otherUser = otherUserDoc.data();
-
-          // Get the service details
-          const serviceDoc = await getDoc(doc(db, 'services', booking.serviceId));
-          const service = serviceDoc.data();
-
-          // Try to get the latest message from the messages collection
-          const messagesQuery = query(
-            collection(db, 'messages'),
-            where('bookingId', '==', booking.id),
-            orderBy('createdAt', 'desc'),
-            limit(1)
-          );
-          
-          const messagesSnapshot = await getDocs(messagesQuery);
-          const latestMessage = messagesSnapshot.docs[0]?.data() || null;
-
-          // If there's no message in the messages collection but there is a booking message,
-          // use the booking message as the latest message
-          const finalMessage = latestMessage?.text || booking.message;
-          const finalTimestamp = latestMessage?.createdAt || booking.createdAt;
-
-          // Only include the conversation if there is either a message or a booking message
-          if (finalMessage) {
-            return {
-              id: booking.id,
-              otherUserId,
-              otherUsername: otherUser?.username || 'Unknown User',
-              serviceTitle: service?.title || 'Unknown Service',
-              latestMessage: finalMessage,
-              timestamp: finalTimestamp,
-              unreadCount: 0,
-            };
-          }
-          return null;
-        });
-
-        const conversationsData = (await Promise.all(conversationsPromises))
-          .filter(conversation => conversation !== null); // Remove null entries
+        // Try to get the latest message from the messages collection
+        const messagesQuery = query(
+          collection(db, 'messages'),
+          where('bookingId', '==', booking.id),
+          orderBy('createdAt', 'desc'),
+          limit(1)
+        );
         
-        // Sort conversations by most recent message
-        conversationsData.sort((a, b) => {
-          const timeA = a.timestamp?.toDate() || new Date(0);
-          const timeB = b.timestamp?.toDate() || new Date(0);
-          return timeB - timeA;
-        });
+        const messagesSnapshot = await getDocs(messagesQuery);
+        const latestMessage = messagesSnapshot.docs[0]?.data() || null;
 
-        setConversations(conversationsData);
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching conversations:', error);
-        setLoading(false);
-      }
-    };
+        // Only include the conversation if there is a message in the messages collection
+        if (latestMessage) {
+          return {
+            id: booking.id,
+            otherUserId,
+            otherUsername: otherUser?.username || 'Unknown User',
+            otherUserProfileImage: otherUser?.profileImage,
+            serviceTitle: service?.title || 'Unknown Service',
+            latestMessage: latestMessage.text,
+            timestamp: latestMessage.createdAt,
+            unreadCount,
+          };
+        }
+        return null;
+      });
 
-    fetchConversations();
-  }, [currentUserId, selectedRole]);
+      const conversationsData = (await Promise.all(conversationsPromises))
+        .filter(conversation => conversation !== null); // Remove null entries
+      
+      // Sort conversations by most recent message
+      conversationsData.sort((a, b) => {
+        const timeA = a.timestamp?.toDate() || new Date(0);
+        const timeB = b.timestamp?.toDate() || new Date(0);
+        return timeB - timeA;
+      });
+
+      setConversations(conversationsData);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching conversations:', error);
+      setLoading(false);
+    }
+  };
+
+  // Use useFocusEffect to refresh conversations when the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchConversations();
+    }, [currentUserId, selectedRole])
+  );
 
   const renderRoleSelector = () => (
     <View style={styles.roleSelector}>
@@ -140,23 +151,34 @@ export default function ChatsScreen({ navigation }) {
       })}
     >
       <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
-          {item.otherUsername.charAt(0).toUpperCase()}
-        </Text>
+        <Image
+          source={item.otherUserProfileImage ? { uri: item.otherUserProfileImage } : require('../assets/Avatar_placeholder.png')}
+          style={styles.avatar}
+        />
+        {item.unreadCount > 0 && (
+          <View style={styles.unreadIndicator} />
+        )}
       </View>
       <View style={styles.conversationContent}>
         <View style={styles.conversationHeader}>
           <View style={styles.headerLeft}>
-            <Text style={styles.username}>{item.otherUsername}</Text>
-            <View style={styles.serviceBadge}>
-              <Text style={styles.serviceBadgeText}>{item.serviceTitle}</Text>
-            </View>
+            <Text style={[
+              styles.username,
+              item.unreadCount > 0 && styles.unreadUsername
+            ]}>{item.otherUsername}</Text>
+            <Text style={styles.timestamp}>
+              {item.timestamp?.toDate().toLocaleDateString()}
+            </Text>
           </View>
-          <Text style={styles.timestamp}>
-            {item.timestamp?.toDate().toLocaleDateString()}
-          </Text>
         </View>
-        <Text style={styles.lastMessage} numberOfLines={2}>
+        <View style={styles.serviceInfo}>
+          <Ionicons name="briefcase-outline" size={14} color="#5A31F4" />
+          <Text style={styles.serviceTitle}>{item.serviceTitle}</Text>
+        </View>
+        <Text style={[
+          styles.lastMessage,
+          item.unreadCount > 0 && styles.unreadMessage
+        ]} numberOfLines={2}>
           {item.latestMessage}
         </Text>
       </View>
@@ -247,15 +269,12 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#5A31F4',
-    justifyContent: 'center',
-    alignItems: 'center',
     marginRight: 12,
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
   conversationContent: {
     flex: 1,
@@ -272,34 +291,53 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
-  serviceBadge: {
-    backgroundColor: '#F0E7FF',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  serviceBadgeText: {
-    color: '#5A31F4',
-    fontSize: 12,
-    fontWeight: '500',
-  },
   username: {
     fontSize: 16,
     fontWeight: '600',
     color: '#2D1B5A',
+    marginRight: 8,
   },
   timestamp: {
     fontSize: 12,
     color: '#666',
   },
+  serviceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  serviceTitle: {
+    fontSize: 13,
+    color: '#5A31F4',
+    marginLeft: 4,
+    fontWeight: '500',
+  },
   lastMessage: {
     fontSize: 14,
     color: '#666',
-    marginTop: 4,
+    marginTop: 2,
+  },
+  unreadIndicator: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  unreadUsername: {
+    fontWeight: '700',
+    color: '#2D1B5A',
+  },
+  unreadMessage: {
+    fontWeight: '500',
+    color: '#2D1B5A',
   },
   unreadBadge: {
-    backgroundColor: '#5A31F4',
+    backgroundColor: '#FF3B30',
     borderRadius: 12,
     minWidth: 24,
     height: 24,

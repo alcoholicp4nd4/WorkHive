@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity } from 'react-native';
-import { collection, query, where, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { markNotificationAsRead } from '../utils/notificationService';
@@ -23,17 +23,39 @@ export default function NotificationsScreen() {
   }, [userId]);
 
   const handleNotificationPress = async (notification) => {
-    if (!notification.read) {
-      await markNotificationAsRead(notification.id);
-    }
+    setVisible(false);
+    
+    try {
+      // Check if the notification still exists in the database
+      const notificationDoc = await getDoc(doc(db, 'notifications', notification.id));
+      if (!notificationDoc.exists()) {
+        Alert.alert('Notification Deleted', 'This notification has been deleted.');
+        return;
+      }
 
-    // Handle navigation based on notification data
-    if (notification.data.bookingId) {
-      navigation.navigate('BookingDetails', {
-        bookingId: notification.data.bookingId,
-        serviceId: notification.data.serviceId,
-        providerId: notification.data.providerId
-      });
+      // Navigate based on notification type
+      if (notification.type === 'booking' && notification.relatedBookingId) {
+        // Get the booking details to determine the navigation
+        const bookingDoc = await getDoc(doc(db, 'bookings', notification.relatedBookingId));
+        if (bookingDoc.exists()) {
+          const booking = bookingDoc.data();
+          
+          // Check if current user is the provider or customer
+          if (booking.providerId === userId) {
+            // User is the provider, navigate to provider bookings
+            navigation.navigate('BookedServices');
+          } else if (booking.userId === userId) {
+            // User is the customer, navigate to booking details
+            navigation.navigate('BookingDetails', {
+              bookingId: notification.relatedBookingId,
+              serviceId: booking.serviceId,
+              providerId: booking.providerId
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error handling notification press:', error);
     }
   };
 

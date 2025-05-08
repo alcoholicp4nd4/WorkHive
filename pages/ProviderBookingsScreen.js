@@ -199,25 +199,25 @@ export default function ProviderBookingsScreen() {
   };
 
   const renderIndividualBookingItem = (booking) => {
-    const user = booking.userDetails;
-    if (!user) return null;
+      const user = booking.userDetails;
+      if (!user) return null;
 
-    return (
-      <View key={booking.id} style={styles.bookingListItem}>
-        <View style={styles.bookingInfoRow}>
-          <Text style={styles.bookingUserText}>User: {user.username}</Text>
-          <View style={[styles.statusBadgeSmall, { backgroundColor: getStatusColor(booking.status) }]}>
-            <Text style={styles.statusTextSmall}>{booking.status.toUpperCase()}</Text>
-          </View>
-        </View>
-        <Text style={styles.bookingDateText}>Booked on: {formatDate(booking.createdAt)}</Text>
+      return (
+          <View key={booking.id} style={styles.bookingListItem}>
+              <View style={styles.bookingInfoRow}>
+                <Text style={styles.bookingUserText}>User: {user.username}</Text>
+                <View style={[styles.statusBadgeSmall, { backgroundColor: getStatusColor(booking.status) }]}>
+                    <Text style={styles.statusTextSmall}>{booking.status.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Text style={styles.bookingDateText}>Booked on: {formatDate(booking.createdAt)}</Text>
         {booking.message && (
           <View style={styles.messageContainer}>
             <Text style={styles.messageLabel}>Message:</Text>
             <Text style={styles.messageText}>{booking.message}</Text>
           </View>
         )}
-        <View style={styles.individualBookingActions}>
+              <View style={styles.individualBookingActions}>
           <TouchableOpacity 
             style={[styles.actionButtonSmall, styles.chatButton]}
             onPress={() => navigation.navigate('Chat', {
@@ -228,32 +228,32 @@ export default function ProviderBookingsScreen() {
           >
             <Text style={styles.actionButtonTextSmall}>💬 Chat</Text>
           </TouchableOpacity>
-          {booking.status === 'pending' && (
-            <>
-              <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'confirmed')} style={[styles.actionButtonSmall, styles.confirmButton]}>
-                <Text style={styles.actionButtonTextSmall}>Confirm</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleReject(booking.id)} style={[styles.actionButtonSmall, styles.rejectButton]}>
-                <Text style={styles.actionButtonTextSmall}>Reject</Text>
-              </TouchableOpacity>
-            </>
-          )}
-          {booking.status === 'confirmed' && (
-            <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'in progress')} style={[styles.actionButtonSmall, styles.inProgressButton]}>
-              <Text style={styles.actionButtonTextSmall}>Start Work</Text>
-            </TouchableOpacity>
-          )}
-          {booking.status === 'in progress' && (
-            <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'completed')} style={[styles.actionButtonSmall, styles.completeButton]}>
-              <Text style={styles.actionButtonTextSmall}>Mark Completed</Text>
-            </TouchableOpacity>
-          )}
-          {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'cancelled') && (
-            <Text style={styles.finalBookingStatusText}>Status: {booking.status}</Text>
-          )}
-        </View>
-      </View>
-    );
+                {booking.status === 'pending' && (
+                  <>
+                    <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'confirmed')} style={[styles.actionButtonSmall, styles.confirmButton]}>
+                      <Text style={styles.actionButtonTextSmall}>Confirm</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleReject(booking.id)} style={[styles.actionButtonSmall, styles.rejectButton]}>
+                      <Text style={styles.actionButtonTextSmall}>Reject</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {booking.status === 'confirmed' && (
+                    <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'in progress')} style={[styles.actionButtonSmall, styles.inProgressButton]}>
+                        <Text style={styles.actionButtonTextSmall}>Start Work</Text>
+                    </TouchableOpacity>
+                )}
+                {booking.status === 'in progress' && (
+                  <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'completed')} style={[styles.actionButtonSmall, styles.completeButton]}>
+                    <Text style={styles.actionButtonTextSmall}>Mark Completed</Text>
+                  </TouchableOpacity>
+                )}
+                 {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'cancelled') && (
+                    <Text style={styles.finalBookingStatusText}>Status: {booking.status}</Text>
+                )}
+              </View>
+          </View>
+      );
   };
 
   const renderServiceGroupItem = ({ item: serviceGroup }) => {
