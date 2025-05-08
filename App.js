@@ -27,6 +27,7 @@ import UserProfileScreen from "./pages/UserProfileScreen";
 import EditProfileScreen from "./pages/EditProfileScreen";
 import PublicProfileScreen from "./pages/PublicProfileScreen";
 import CategoryScreen from "./pages/CategoryScreen";
+import { Home as HomeIcon, Heart, Search as SearchIcon, User, MessageCircle } from 'lucide-react-native';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -54,11 +55,41 @@ const linking = {
 function MainAppTabs() {
   return (
     <Tab.Navigator>
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Favorite" component={FavoriteScreen} />
-      <Tab.Screen name="Search" component={SearchScreen} />
-      <Tab.Screen name="Account" component={AccountScreen} />
-      <Tab.Screen name="Chats" component={ChatsScreen} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <HomeIcon color={color} size={size || 24} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Favorite" 
+        component={FavoriteScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <Heart color={color} size={size || 24} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Search" 
+        component={SearchScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <SearchIcon color={color} size={size || 24} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Account" 
+        component={AccountScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <User color={color} size={size || 24} />,
+        }}
+      />
+      <Tab.Screen 
+        name="Chats" 
+        component={ChatsScreen} 
+        options={{
+          tabBarIcon: ({ color, size }) => <MessageCircle color={color} size={size || 24} />,
+        }}
+      />
     </Tab.Navigator>
   );
 }
@@ -108,6 +139,7 @@ export default function App() {
       >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="Register" component={RegisterScreen} />
+        <Stack.Screen name="ProfileSetupScreen" component={ProfileSetupScreen} />
         <Stack.Screen name="MainApp" component={MainAppTabs} />
         <Stack.Screen name="AddServiceScreen" component={AddServiceScreen} />
         <Stack.Screen name="ServiceDetails" component={ServiceDetailsScreen} />

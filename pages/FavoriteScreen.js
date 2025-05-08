@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, ActivityIndicator, RefreshControl, Dimensions } from 'react-native';
 import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import Icon from 'react-native-vector-icons/MaterialIcons';
+
+const { width } = Dimensions.get('window');
 
 export default function FavoriteScreen() {
   const [favorites, setFavorites] = useState([]);
@@ -37,7 +40,21 @@ export default function FavoriteScreen() {
         }
       }
 
-      setFavorites(services);
+      // Fetch ratings for these services
+      const ratingsRef = collection(db, 'ratings');
+      const ratingsSnapshot = await getDocs(ratingsRef);
+      const ratings = ratingsSnapshot.docs.map(doc => doc.data());
+
+      // Attach average rating to each service
+      const servicesWithRatings = services.map(service => {
+        const serviceRatings = ratings.filter(r => r.serviceId === service.id && typeof r.rating === 'number');
+        const avgRating = serviceRatings.length > 0
+          ? serviceRatings.reduce((sum, r) => sum + r.rating, 0) / serviceRatings.length
+          : null;
+        return { ...service, rating: avgRating };
+      });
+
+      setFavorites(servicesWithRatings);
     } catch (error) {
       console.error('Error fetching favorites:', error);
     } finally {
@@ -60,21 +77,47 @@ export default function FavoriteScreen() {
     fetchFavorites();
   }, []);
 
-  const renderService = ({ item }) => (
+  const getDisplayRating = (service) => (
+    typeof service.rating === 'number' ? service.rating.toFixed(1) : 'N/A'
+  );
+
+  const renderServiceItem = ({ item }) => (
     <TouchableOpacity
-      style={styles.serviceCard}
+      style={styles.card}
       onPress={() => navigation.navigate('ServiceDetails', { service: item })}
     >
-      <Image
-        source={{ uri: item.images?.[0] || 'https://via.placeholder.com/300' }}
-        style={styles.serviceImage}
+      <FlatList
+        data={
+          item.images && item.images.length > 0
+            ? item.images
+            : ['https://via.placeholder.com/300']
+        }
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(uri, idx) => idx.toString()}
+        renderItem={({ item: imageUri }) => (
+          <Image
+            source={{ uri: imageUri }}
+            style={styles.cardImage}
+            resizeMode="cover"
+          />
+        )}
       />
-      <View style={styles.serviceInfo}>
-        <Text style={styles.serviceTitle}>{item.title}</Text>
-        <Text style={styles.servicePrice}>
-          {item.priceType === 'hourly' ? `$${item.price}/hr` : `$${item.price}`}
-        </Text>
-        <Text style={styles.serviceProvider}>by {item.username}</Text>
+      <View style={styles.cardContent}>
+        <Text style={styles.cardTitle}>{item.title}</Text>
+        <Text style={styles.cardUsername}>by {item.username}</Text>
+        <Text style={styles.cardCategory}>{item.category}</Text>
+        <View style={styles.cardBottomRow}>
+          <Text style={styles.cardPrice}>
+            {item.priceType === 'hourly' ? `${item.price} TND/hr` : `${item.price} TND`}
+          </Text>
+          <Text style={styles.cardDelivery}>{item.deliveryTime}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <Icon name="star" size={16} color="#C4B5FD" />
+          <Text style={{ marginLeft: 4, color: '#333', fontWeight: '500' }}>{getDisplayRating(item)}</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -82,8 +125,8 @@ export default function FavoriteScreen() {
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading favorites...</Text>
+        <ActivityIndicator size="large" color="#5A31F4" />
+        <Text style={styles.loadingText}>Loading favorites...</Text>
       </View>
     );
   }
@@ -108,7 +151,7 @@ export default function FavoriteScreen() {
     <View style={styles.container}>
       <FlatList
         data={favorites}
-        renderItem={renderService}
+        renderItem={renderServiceItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContainer}
         refreshControl={
@@ -126,18 +169,25 @@ export default function FavoriteScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#F4EBFF',
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F4EBFF',
+  },
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: '#5A31F4',
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    backgroundColor: '#F4EBFF',
   },
   emptyText: {
     fontSize: 16,
@@ -145,39 +195,56 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContainer: {
-    padding: 15,
+    padding: 20,
   },
-  serviceCard: {
+  card: {
     backgroundColor: '#fff',
-    borderRadius: 10,
-    marginBottom: 15,
-    shadowColor: '#000',
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#8A2BE2',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  serviceImage: {
-    width: '100%',
+  cardImage: {
+    width: width - 40,
     height: 200,
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
   },
-  serviceInfo: {
-    padding: 15,
+  cardContent: {
+    padding: 20,
   },
-  serviceTitle: {
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 4,
+  },
+  cardUsername: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 8,
+  },
+  cardCategory: {
+    fontSize: 14,
+    color: '#B78BFA',
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  cardBottomRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  cardPrice: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 5,
+    color: '#333',
   },
-  servicePrice: {
-    fontSize: 16,
-    color: '#5A31F4',
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  serviceProvider: {
+  cardDelivery: {
     fontSize: 14,
     color: '#666',
   },

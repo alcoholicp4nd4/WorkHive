@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,10 @@ import {
   Alert,
   SafeAreaView,
   Platform,
-  StatusBar
+  StatusBar,
+  Image,
+  Dimensions,
+  ActivityIndicator
 } from 'react-native';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -17,154 +20,256 @@ import { sendNotification } from '../utils/notificationUtils';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
 
+const { width } = Dimensions.get('window');
+
 export default function ProviderBookingsScreen() {
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState({});
   const [services, setServices] = useState({});
-  const [sortBy, setSortBy] = useState('date');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [groupedBookings, setGroupedBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
   const navigation = useNavigation();
   
 
   useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
     const q = query(collection(db, 'bookings'), where('providerId', '==', userId));
     const unsubscribe = onSnapshot(q, snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setBookings(data);
+      if (data.length === 0) setLoading(false);
+    }, (error) => {
+      console.error("Error fetching bookings: ", error);
+      setLoading(false);
     });
     return () => unsubscribe();
   }, [userId]);
 
   useEffect(() => {
     const fetchDetails = async () => {
-      const userIds = bookings.map(booking => booking.userId);
-      const serviceIds = bookings.map(booking => booking.serviceId);
+      const userIds = bookings.map(booking => booking.userId).filter(Boolean);
+      const serviceIds = bookings.map(booking => booking.serviceId).filter(Boolean);
       const uniqueUserIds = [...new Set(userIds)];
       const uniqueServiceIds = [...new Set(serviceIds)];
 
-      const userDetails = {};
-      for (const id of uniqueUserIds) {
-        if (!users[id]) {
-          const q = query(collection(db, 'users'), where('uid', '==', id));
-          const querySnapshot = await getDocs(q);
-          if (!querySnapshot.empty) {
-            userDetails[id] = querySnapshot.docs[0].data();
-          }
-        }
-      }
+      const usersToFetch = uniqueUserIds.filter(id => !users[id]);
+      const servicesToFetch = uniqueServiceIds.filter(id => !services[id]);
 
-      const serviceDetails = {};
-      for (const id of uniqueServiceIds) {
-        if (!services[id]) {
-          const serviceDoc = await getDoc(doc(db, 'services', id));
-          if (serviceDoc.exists()) {
-            serviceDetails[id] = serviceDoc.data();
-          }
-        }
-      }
+      const userPromises = usersToFetch.map(id => getDoc(doc(db, 'users', id)));
+      const servicePromises = servicesToFetch.map(id => getDoc(doc(db, 'services', id)));
 
-      setUsers(prevUsers => ({ ...prevUsers, ...userDetails }));
-      setServices(prevServices => ({ ...prevServices, ...serviceDetails }));
+      try {
+          const userSnapshots = await Promise.all(userPromises);
+          const serviceSnapshots = await Promise.all(servicePromises);
+
+          const fetchedUsers = {};
+          userSnapshots.forEach(snap => {
+              if (snap.exists()) fetchedUsers[snap.id] = snap.data();
+          });
+
+          const fetchedServices = {};
+          serviceSnapshots.forEach(snap => {
+              if (snap.exists()) fetchedServices[snap.id] = snap.data();
+          });
+
+          if (Object.keys(fetchedUsers).length > 0) {
+              setUsers(prev => ({ ...prev, ...fetchedUsers }));
+          }
+          if (Object.keys(fetchedServices).length > 0) {
+              setServices(prev => ({ ...prev, ...fetchedServices }));
+          }
+
+      } catch (error) {
+          console.error("Error fetching details batch: ", error);
+      } finally {
+           if (bookings.length > 0 && (servicesToFetch.length > 0 || usersToFetch.length > 0)) {
+               setLoading(false);
+           }
+      }
     };
 
     if (bookings.length > 0) {
       fetchDetails();
-    }
+    } 
   }, [bookings]);
 
-  const handleUpdateStatus = async (bookingId, newStatus, rejectionReason = '') => {
-    const updateData = { status: newStatus };
-    if (rejectionReason) {
-      updateData.rejectionReason = rejectionReason;
+  useEffect(() => {
+    if (bookings.length > 0 && Object.keys(services).length > 0 && Object.keys(users).length > 0) {
+      setLoading(true);
+
+      const sortedBookings = [...bookings].sort((a, b) => {
+         const dateA = a.createdAt?.toDate() || new Date(0);
+         const dateB = b.createdAt?.toDate() || new Date(0);
+         return dateB - dateA;
+      });
+
+      const groups = sortedBookings.reduce((acc, booking) => {
+        const serviceId = booking.serviceId;
+        if (!serviceId || !services[serviceId]) return acc;
+
+        if (!acc[serviceId]) {
+          acc[serviceId] = {
+            serviceId: serviceId,
+            serviceDetails: services[serviceId],
+            bookings: [],
+          };
+        }
+        const bookingWithUser = { ...booking, userDetails: users[booking.userId] };
+        acc[serviceId].bookings.push(bookingWithUser);
+        return acc;
+      }, {});
+
+      const groupedArray = Object.values(groups);
+      
+      groupedArray.sort((a, b) => a.serviceDetails.title.localeCompare(b.serviceDetails.title));
+
+      setGroupedBookings(groupedArray);
+      setLoading(false);
+    } else if (bookings.length === 0 && !loading) {
+        setGroupedBookings([]);
     }
-    await updateDoc(doc(db, 'bookings', bookingId), updateData);
-    const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
-const booking = bookingDoc.data();
-if (booking) {
-  let message = '';
-  if (newStatus === 'in progress') {
-    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" is now in progress.`;
-  } else if (newStatus === 'completed') {
-    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" has been completed.`;
-  } else if (newStatus === 'rejected') {
-    message = `Your booking for "${services[booking.serviceId]?.title || 'a service'}" was rejected.`;
-  }
-  if (message) {
-    await sendNotification(booking.userId, 'status_update', message, bookingId);
-  }
-}
+  }, [bookings, services, users]);
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'pending': return '#F59E0B'; 
+      case 'confirmed':
+      case 'in progress': return '#10B981'; 
+      case 'completed': return '#3B82F6'; 
+      case 'rejected':
+      case 'cancelled': return '#EF4444'; 
+      default: return '#6B7280';
+    }
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return 'N/A';
+    const date = timestamp.toDate();
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+  };
+
+  const handleUpdateStatus = async (bookingId, newStatus, rejectionReason = '') => {
+    try {
+      const updateData = { status: newStatus };
+      if (newStatus === 'rejected' && rejectionReason) {
+          updateData.rejectionReason = rejectionReason;
+      }
+      await updateDoc(doc(db, 'bookings', bookingId), updateData);
+      
+      const bookingDoc = await getDoc(doc(db, 'bookings', bookingId));
+      const booking = bookingDoc.data();
+      if (booking) {
+        let message = '';
+        const serviceTitle = services[booking.serviceId]?.title || 'your booking';
+        if (newStatus === 'confirmed') {
+          message = `Your booking for "${serviceTitle}" has been confirmed.`;
+        } else if (newStatus === 'in progress') {
+          message = `Your booking for "${serviceTitle}" is now in progress.`;
+        } else if (newStatus === 'completed') {
+          message = `Your booking for "${serviceTitle}" has been completed.`;
+        } else if (newStatus === 'rejected') {
+          message = `Your booking for "${serviceTitle}" was rejected.` + (rejectionReason ? ` Reason: ${rejectionReason}` : '');
+        }
+        if (message) {
+          await sendNotification(booking.userId, 'status_update', message, bookingId);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating booking status:", error);
+      Alert.alert("Error", "Failed to update booking status.");
+    }
   };
 
   const handleReject = (bookingId) => {
     Alert.prompt(
       'Reject Booking',
-      'Please provide a reason for rejection:',
+      'Please provide a reason for rejection (optional):',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Submit',
-          onPress: async (reason) => {
-            if (reason) {
-              await handleUpdateStatus(bookingId, 'rejected', reason);
-            } else {
-              Alert.alert('Error', 'Rejection reason cannot be empty.');
-            }
-          },
-        },
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Submit Rejection', onPress: (reason) => handleUpdateStatus(bookingId, 'rejected', reason || 'Provider rejected') },
       ],
       'plain-text'
     );
   };
 
-  const sortBookings = () => {
-    return [...bookings].sort((a, b) => {
-      if (sortBy === 'date') {
-        const dateA = a.createdAt?.toDate() || new Date(0);
-        const dateB = b.createdAt?.toDate() || new Date(0);
-        return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-      } else if (sortBy === 'name') {
-        const userA = users[a.userId]?.username || '';
-        const userB = users[b.userId]?.username || '';
-        return sortOrder === 'asc' 
-          ? userA.localeCompare(userB)
-          : userB.localeCompare(userA);
-      }
-      return 0;
-    });
+  const renderIndividualBookingItem = (booking) => {
+      const user = booking.userDetails;
+      if (!user) return null;
+
+      return (
+          <View key={booking.id} style={styles.bookingListItem}>
+              <View style={styles.bookingInfoRow}>
+                <Text style={styles.bookingUserText}>User: {user.username}</Text>
+                <View style={[styles.statusBadgeSmall, { backgroundColor: getStatusColor(booking.status) }]}>
+                    <Text style={styles.statusTextSmall}>{booking.status.toUpperCase()}</Text>
+                </View>
+              </View>
+              <Text style={styles.bookingDateText}>Booked on: {formatDate(booking.createdAt)}</Text>
+             
+              <View style={styles.individualBookingActions}>
+                {booking.status === 'pending' && (
+                  <>
+                    <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'confirmed')} style={[styles.actionButtonSmall, styles.confirmButton]}>
+                      <Text style={styles.actionButtonTextSmall}>Confirm</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleReject(booking.id)} style={[styles.actionButtonSmall, styles.rejectButton]}>
+                      <Text style={styles.actionButtonTextSmall}>Reject</Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+                {booking.status === 'confirmed' && (
+                    <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'in progress')} style={[styles.actionButtonSmall, styles.inProgressButton]}>
+                        <Text style={styles.actionButtonTextSmall}>Start Work</Text>
+                    </TouchableOpacity>
+                )}
+                {booking.status === 'in progress' && (
+                  <TouchableOpacity onPress={() => handleUpdateStatus(booking.id, 'completed')} style={[styles.actionButtonSmall, styles.completeButton]}>
+                    <Text style={styles.actionButtonTextSmall}>Mark Completed</Text>
+                  </TouchableOpacity>
+                )}
+                 {(booking.status === 'completed' || booking.status === 'rejected' || booking.status === 'cancelled') && (
+                    <Text style={styles.finalBookingStatusText}>Status: {booking.status}</Text>
+                )}
+              </View>
+          </View>
+      );
   };
 
-  const renderItem = ({ item }) => {
-    const user = users[item.userId];
-    const service = services[item.serviceId];
+  const renderServiceGroupItem = ({ item: serviceGroup }) => {
+    const { serviceDetails, bookings: bookingsInGroup } = serviceGroup;
 
     return (
-      <View style={styles.card}>
-        <Text>Service Title: {service ? service.title : 'Loading...'}</Text>
-        <Text>User: {user ? user.username : 'Loading...'}</Text>
-        <Text>Status: {item.status}</Text>
-        <Text>Date: {item.createdAt?.toDate().toLocaleString()}</Text>
+      <View style={styles.card}> 
+        <FlatList
+          data={ serviceDetails.images && serviceDetails.images.length > 0 ? serviceDetails.images : ['https://via.placeholder.com/300'] }
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(uri, idx) => `img-${serviceDetails.serviceId}-${idx}`}
+          renderItem={({ item: imageUri }) => (
+            <Image source={{ uri: imageUri }} style={styles.cardImage} resizeMode="cover" />
+          )}
+          listKey={`service-images-${serviceDetails.serviceId}`}
+        />
+        <View style={styles.cardContent}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{serviceDetails.title}</Text>
+          <View style={styles.cardBottomRow}>
+            <Text style={styles.cardPrice}>{serviceDetails.priceType === 'hourly' ? `${serviceDetails.price} TND/hr` : `${serviceDetails.price} TND`}</Text>
+            <Text style={styles.cardDelivery}>{serviceDetails.deliveryTime}</Text>
+          </View>
+        </View>
 
-        <View style={styles.btnRow}>
-          {item.status === 'pending' && (
-            <>
-              <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'in progress')} style={styles.btn}>
-                <Text>✅ Confirm</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleReject(item.id)} style={styles.btn}>
-                <Text>❌ Reject</Text>
-              </TouchableOpacity>
-            </>
-          )}
-          {item.status === 'in progress' && (
-            <TouchableOpacity onPress={() => handleUpdateStatus(item.id, 'completed')} style={styles.btn}>
-              <Text>🏁 Complete</Text>
-            </TouchableOpacity>
-          )}
+        <View style={styles.groupDivider} />
+
+        <View style={styles.bookingListContainer}>
+          <Text style={styles.bookingListHeader}>Bookings for this service ({bookingsInGroup.length})</Text>
+          {bookingsInGroup.map(booking => renderIndividualBookingItem(booking))}
         </View>
       </View>
     );
@@ -172,42 +277,36 @@ if (booking) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <ArrowLeft size={24} color="#000" />
+          <ArrowLeft size={24} color="#2D1B5A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Provider Bookings</Text>
       </View>
-      <View style={styles.filterContainer}>
-        <TouchableOpacity 
-          style={[styles.filterBtn, sortBy === 'date' && styles.activeFilterBtn]}
-          onPress={() => {
-            setSortBy('date');
-            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-          }}
-        >
-          <Text>Sort by Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.filterBtn, sortBy === 'name' && styles.activeFilterBtn]}
-          onPress={() => {
-            setSortBy('name');
-            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-          }}
-        >
-          <Text>Sort by Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</Text>
-        </TouchableOpacity>
+
+      <View style={styles.mainContentWrapper}>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#B78BFA" />
+            <Text style={styles.loadingText}>Loading bookings...</Text>
+          </View>
+        ) : groupedBookings.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>You have no bookings yet.</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={groupedBookings}
+            keyExtractor={item => item.serviceId}
+            renderItem={renderServiceGroupItem}
+            contentContainerStyle={styles.listContainer}
+          />
+        )}
       </View>
-      <FlatList
-        data={sortBookings()}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: 20 }}
-      />
     </SafeAreaView>
   );
 }
@@ -215,55 +314,180 @@ if (booking) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F4EBFF',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F4EBFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF', 
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E0E0E0',
   },
   backButton: {
     padding: 8,
-    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#2D1B5A',
+    marginLeft: 16,
   },
-  filterContainer: {
-    flexDirection: 'row',
+  mainContentWrapper: { 
+    flex: 1,
+    backgroundColor: '#F4EBFF',
+  },
+  loadingContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: '#F4EBFF',
+  },
+  loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+      color: '#5A31F4'
+  },
+  emptyContainer: {
+    flex: 1,
     justifyContent: 'center',
-    padding: 10,
-    backgroundColor: '#F5F5F5',
+    alignItems: 'center',
+    padding: 20,
   },
-  filterBtn: {
-    padding: 10,
-    marginHorizontal: 5,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 5,
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
-  activeFilterBtn: {
-    backgroundColor: '#B78BFA',
+  listContainer: {
+    padding: 20,
   },
   card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardImage: {
+    width: width - 40,
+    height: 160,
+  },
+  cardContent: {
     padding: 15,
-    backgroundColor: '#EFE3FF',
-    borderRadius: 10,
-    marginBottom: 15,
+    paddingBottom: 5,
   },
-  btnRow: {
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    flexShrink: 1,
+    marginBottom: 8,
+  },
+  cardUsername: {
+    fontSize: 14, 
+    color: '#5A31F4',
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  cardBottomRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
   },
-  btn: {
-    backgroundColor: '#D6C3F9',
-    padding: 8,
-    borderRadius: 8,
+  cardPrice: {
+    fontSize: 16, 
+    fontWeight: '600',
+    color: '#333',
   },
+  cardDelivery: {
+    fontSize: 13, 
+    color: '#666',
+  },
+  groupDivider: {
+    height: 1,
+    backgroundColor: '#E0E0E0',
+    marginHorizontal: 15,
+    marginVertical: 10,
+  },
+  bookingListContainer: {
+    paddingHorizontal: 15, 
+    paddingBottom: 10,
+  },
+  bookingListHeader: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#4A5568',
+      marginBottom: 10,
+      marginTop: 5,
+  },
+  bookingListItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
+    paddingVertical: 12,
+  },
+  bookingInfoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+   bookingUserText: {
+       fontSize: 14,
+       fontWeight: '500',
+       color: '#2D3748',
+   },
+   statusBadgeSmall: {
+       paddingHorizontal: 6,
+       paddingVertical: 3,
+       borderRadius: 10,
+       marginLeft: 8,
+   },
+   statusTextSmall: {
+       color: '#fff',
+       fontSize: 9,
+       fontWeight: 'bold',
+   },
+   bookingDateText: {
+       fontSize: 12,
+       color: '#718096',
+       marginTop: 2,
+       marginBottom: 8,
+   },
+   individualBookingActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    gap: 8,
+    marginTop: 4,
+   },
+   actionButtonSmall: {
+    paddingVertical: 5,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonTextSmall: {
+      fontSize: 12,
+      fontWeight: 'bold',
+      color: '#FFFFFF',
+  },
+  finalBookingStatusText: {
+      fontSize: 13,
+      fontWeight: '600',
+      color: '#6B7280',
+      paddingVertical: 5,
+  },
+  confirmButton: { backgroundColor: '#10B981' },
+  inProgressButton: { backgroundColor: '#10B981' },
+  rejectButton: { backgroundColor: '#EF4444' },
+  completeButton: { backgroundColor: '#3B82F6' },
 });

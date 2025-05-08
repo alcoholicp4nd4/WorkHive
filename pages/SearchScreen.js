@@ -13,12 +13,13 @@ import {
   Button,
   Alert,
 } from 'react-native';
-import { Search, MapPin, SlidersHorizontal } from 'lucide-react-native';
+import { Search, MapPin, SlidersHorizontal, X, ChevronLeft } from 'lucide-react-native';
 import * as Location from 'expo-location';
-import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import Slider from '@react-native-community/slider';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 const { width } = Dimensions.get('window');
 
@@ -95,12 +96,13 @@ function convertDeliveryTimeToDays(deliveryStr) {
   return value;
 }
 
-export default function SearchScreen({ navigation }) {
+export default function SearchScreen({ navigation, route }) {
   // Basic search & services
   const [searchQuery, setSearchQuery] = useState('');
   const [services, setServices] = useState([]);
   const [filtered, setFiltered] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [ratings, setRatings] = useState([]);
 
   // Nearby filter state
   const [location, setLocation] = useState(null); // { latitude, longitude }
@@ -115,7 +117,7 @@ export default function SearchScreen({ navigation }) {
 
   // Additional filters: category, service type, price range, delivery time range
   const [filterModalVisible, setFilterModalVisible] = useState(false);
-  const [filterCategory, setFilterCategory] = useState('');
+  const [filterCategories, setFilterCategories] = useState(route.params?.initialCategory ? [route.params.initialCategory] : []);
   const [filterServiceType, setFilterServiceType] = useState('');
   const [filterMinPrice, setFilterMinPrice] = useState('');
   const [filterMaxPrice, setFilterMaxPrice] = useState('');
@@ -123,24 +125,38 @@ export default function SearchScreen({ navigation }) {
   const [filterDeliveryMax, setFilterDeliveryMax] = useState('');
   const [filterDeliveryUnit, setFilterDeliveryUnit] = useState('days'); // 'days' or 'months'
 
-  // Fetch services from Firestore
+  // Fetch services and ratings from Firestore
   useEffect(() => {
-    const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const fetched = snapshot.docs.map((doc) => ({
+    const fetchData = async () => {
+      const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
+      const ratingsRef = collection(db, 'ratings');
+      const [servicesSnapshot, ratingsSnapshot] = await Promise.all([
+        getDocs(q),
+        getDocs(ratingsRef),
+      ]);
+      const fetchedServices = servicesSnapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
-      setServices(fetched);
+      const fetchedRatings = ratingsSnapshot.docs.map(doc => doc.data());
+      setServices(fetchedServices);
+      setRatings(fetchedRatings);
       setLoading(false);
-    });
-    return () => unsubscribe();
+    };
+    fetchData();
   }, []);
 
   // Get user's current location (for the Nearby filter)
   useEffect(() => {
     getUserLocation();
   }, []);
+
+  // Apply initial category filter when screen loads
+  useEffect(() => {
+    if (route.params?.initialCategory) {
+      setFilterCategories([route.params.initialCategory]);
+    }
+  }, [route.params?.initialCategory]);
 
   // Filtering useEffect
   useEffect(() => {
@@ -154,26 +170,18 @@ export default function SearchScreen({ navigation }) {
     // If "Nearby" filtering is active
     if (filterNearby && location) {
       filteredList = filteredList.filter(item => {
-        // If the service doesn't have a location, include it.
         if (!item.location?.latitude) return true;
         return getDistance(item.location.latitude, item.location.longitude) <= radius;
       });
     }
     
 
-    // Category filter (exact match)
-    if (filterCategory) {
-      const allowedCategories = categoryGroups[filterCategory];
-      if (allowedCategories && allowedCategories.length > 0) {
-        filteredList = filteredList.filter(item =>
-          allowedCategories.includes(item.category)
-        );
-      } else {
-        // Fallback to exact match if mapping not found.
-        filteredList = filteredList.filter(item =>
-          item.category?.toLowerCase() === filterCategory.toLowerCase()
-        );
-      }
+    // Category filter (multiple categories)
+    if (filterCategories.length > 0) {
+      const allowedCategories = filterCategories.flatMap(cat => categoryGroups[cat] || [cat]);
+      filteredList = filteredList.filter(item =>
+        allowedCategories.includes(item.category)
+      );
     }
     // Service Type filter (exact match)
     if (filterServiceType) {
@@ -214,7 +222,7 @@ export default function SearchScreen({ navigation }) {
     filterNearby,
     location,
     radius,
-    filterCategory,
+    filterCategories,
     filterServiceType,
     filterMinPrice,
     filterMaxPrice,
@@ -296,13 +304,29 @@ export default function SearchScreen({ navigation }) {
   };
 
   const resetAdditionalFilters = () => {
-    setFilterCategory('');
+    setFilterCategories([]);
     setFilterServiceType('');
     setFilterMinPrice('');
     setFilterMaxPrice('');
     setFilterDeliveryMin('');
     setFilterDeliveryMax('');
     setFilterDeliveryUnit('days');
+  };
+
+  const additionalFiltersActive = 
+    filterCategories.length > 0 || 
+    filterServiceType !== '' || 
+    filterMinPrice !== '' || 
+    filterMaxPrice !== '' || 
+    filterDeliveryMin !== '' || 
+    filterDeliveryMax !== '';
+
+  // Helper to get average rating for a service
+  const getDisplayRating = (serviceId) => {
+    const serviceRatings = ratings.filter(r => r.serviceId === serviceId && typeof r.rating === 'number');
+    if (serviceRatings.length === 0) return 'N/A';
+    const avg = serviceRatings.reduce((sum, r) => sum + r.rating, 0) / serviceRatings.length;
+    return avg.toFixed(1);
   };
 
   // Render each service item with the old "card" style
@@ -335,9 +359,13 @@ export default function SearchScreen({ navigation }) {
         <Text style={styles.cardCategory}>{item.category}</Text>
         <View style={styles.cardBottomRow}>
           <Text style={styles.cardPrice}>
-            {item.priceType === 'hourly' ? `$${item.price}/hr` : `$${item.price}`}
+            {item.priceType === 'hourly' ? `${item.price} TND/hr` : `${item.price} TND`}
           </Text>
           <Text style={styles.cardDelivery}>{item.deliveryTime}</Text>
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
+          <Icon name="star" size={16} color="#C4B5FD" />
+          <Text style={{ marginLeft: 4, color: '#333', fontWeight: '500' }}>{getDisplayRating(item.id)}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -347,70 +375,89 @@ export default function SearchScreen({ navigation }) {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.searchRow}>
-          <Search size={18} color="#666" />
-          <TextInput
-            placeholder="Search services..."
-            style={styles.input}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        <View style={styles.headerTop}>
+          <View style={styles.searchRow}>
+            <Search size={20} color="#666" />
+            <TextInput
+              placeholder="Search services..."
+              style={styles.input}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholderTextColor="#666"
+            />
+            {searchQuery.length > 0 && (
+              <TouchableOpacity onPress={() => setSearchQuery('')}>
+                <X size={18} color="#666" />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
         <View style={styles.filterRow}>
-          {/* Additional Filters Button */}
-          <TouchableOpacity
-            style={styles.filterBtn}
-            onPress={() => setFilterModalVisible(true)}
-          >
-            <SlidersHorizontal size={16} color="#B78BFA" />
-            <Text style={styles.filterText}>Filters</Text>
-          </TouchableOpacity>
-          {/* Nearby Filter Button */}
-          <TouchableOpacity
-            style={styles.filterBtn}
-            onPress={() => {
-              setNearbyModalVisible(true);
-              if (location) {
-                setModalLocation(location);
-                setModalMapRegion({
-                  latitude: location.latitude,
-                  longitude: location.longitude,
-                  latitudeDelta: 0.05,
-                  longitudeDelta: 0.05,
-                });
-                setModalRadius(radius);
-              }
-            }}
-          >
-            <MapPin size={16} color={filterNearby ? '#fff' : '#B78BFA'} />
-            <Text style={[styles.filterText, filterNearby && styles.filterTextActive]}>
-              Nearby
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.filterButtonGroup}>
+            <TouchableOpacity
+              style={[styles.filterBtn, (filterModalVisible || additionalFiltersActive) && styles.filterBtnActive]}
+              onPress={() => setFilterModalVisible(true)}
+            >
+              <SlidersHorizontal size={18} color={(filterModalVisible || additionalFiltersActive) ? '#fff' : '#B78BFA'} />
+              <Text style={[styles.filterText, (filterModalVisible || additionalFiltersActive) && styles.filterTextActive]}>
+                Filters
+              </Text>
+            </TouchableOpacity>
+            {additionalFiltersActive && (
+              <TouchableOpacity
+                style={styles.clearFilterButton}
+                onPress={resetAdditionalFilters}
+              >
+                <X size={18} color={'#B78BFA'} />
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={styles.filterButtonGroup}>
+            <TouchableOpacity
+              style={[styles.filterBtn, filterNearby && styles.filterBtnActive]}
+              onPress={() => {
+                setNearbyModalVisible(true);
+                if (location) {
+                  setModalLocation(location);
+                  setModalMapRegion({
+                    latitude: location.latitude,
+                    longitude: location.longitude,
+                    latitudeDelta: 0.05,
+                    longitudeDelta: 0.05,
+                  });
+                  setModalRadius(radius);
+                }
+              }}
+            >
+              <MapPin size={18} color={filterNearby ? '#fff' : '#B78BFA'} />
+              <Text style={[styles.filterText, filterNearby && styles.filterTextActive]}>
+                Nearby
+              </Text>
+            </TouchableOpacity>
+            {filterNearby && (
+              <TouchableOpacity
+                style={styles.clearFilterButton}
+                onPress={resetNearbyFilter}
+              >
+                <X size={18} color={'#B78BFA'} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
-
-      {/* Reset Filter Buttons */}
-      {filterNearby && (
-        <TouchableOpacity style={styles.resetButton} onPress={resetNearbyFilter}>
-          <Text style={styles.resetButtonText}>Reset Nearby Filter</Text>
-        </TouchableOpacity>
-      )}
-      {(filterCategory ||
-        filterServiceType ||
-        filterMinPrice ||
-        filterMaxPrice ||
-        filterDeliveryMin ||
-        filterDeliveryMax) && (
-        <TouchableOpacity style={styles.resetButton} onPress={resetAdditionalFilters}>
-          <Text style={styles.resetButtonText}>Reset Additional Filters</Text>
-        </TouchableOpacity>
-      )}
 
       {/* Service List */}
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color="#B78BFA" />
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateTitle}>No Services Found</Text>
+          <Text style={styles.emptyStateText}>
+            Try adjusting your filters or search terms
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -418,6 +465,7 @@ export default function SearchScreen({ navigation }) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={styles.list}
           renderItem={renderServiceItem}
+          showsVerticalScrollIndicator={false}
         />
       )}
 
@@ -485,8 +533,18 @@ export default function SearchScreen({ navigation }) {
               />
             </View>
             <View style={styles.modalButtonRow}>
-              <Button title="Cancel" onPress={() => setNearbyModalVisible(false)} />
-              <Button title="Apply" onPress={applyNearbyFilter} />
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setNearbyModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={applyNearbyFilter}
+              >
+                <Text style={styles.modalButtonText}>Apply</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </View>
@@ -503,7 +561,7 @@ export default function SearchScreen({ navigation }) {
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Additional Filters</Text>
 
-            <Text style={styles.modalLabel}>Category:</Text>
+            <Text style={styles.modalLabel}>Categories:</Text>
             <View style={styles.categoryOptions}>
               {['Tech', 'Design', 'Business', 'Local', 'Education', 'Wellness', 'Other'].map(
                 (cat) => (
@@ -511,16 +569,20 @@ export default function SearchScreen({ navigation }) {
                     key={cat}
                     style={[
                       styles.categoryOption,
-                      filterCategory.toLowerCase() === cat.toLowerCase() &&
-                        styles.categoryOptionSelected,
+                      filterCategories.includes(cat) && styles.categoryOptionSelected,
                     ]}
-                    onPress={() => setFilterCategory(cat)}
+                    onPress={() => {
+                      setFilterCategories(prev => 
+                        prev.includes(cat)
+                          ? prev.filter(c => c !== cat)
+                          : [...prev, cat]
+                      );
+                    }}
                   >
                     <Text
                       style={[
                         styles.categoryOptionText,
-                        filterCategory.toLowerCase() === cat.toLowerCase() &&
-                          styles.categoryOptionTextSelected,
+                        filterCategories.includes(cat) && styles.categoryOptionTextSelected,
                       ]}
                     >
                       {cat}
@@ -628,14 +690,21 @@ export default function SearchScreen({ navigation }) {
             </View>
 
             <View style={styles.modalButtonRow}>
-              <Button title="Cancel" onPress={() => setFilterModalVisible(false)} />
-              <Button
-                title="Apply"
+              <TouchableOpacity
+                style={styles.modalButton}
+                onPress={() => setFilterModalVisible(false)}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalButton}
                 onPress={() => {
                   applyAdditionalFilters();
                   setFilterModalVisible(false);
                 }}
-              />
+              >
+                <Text style={styles.modalButtonText}>Apply</Text>
+              </TouchableOpacity>
             </View>
             <TouchableOpacity onPress={resetAdditionalFilters}>
               <Text style={styles.resetFilterText}>Reset Filter Options</Text>
@@ -648,104 +717,147 @@ export default function SearchScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F3FF',
+  },
   header: {
     paddingTop: 60,
     paddingBottom: 15,
     paddingHorizontal: 20,
-    backgroundColor: '#F4EBFF',
+    backgroundColor: '#A78BFA',
+  },
+  headerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
   searchRow: {
+    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   input: {
-    marginLeft: 10,
     flex: 1,
+    marginLeft: 8,
     fontSize: 16,
+    color: '#333',
   },
   filterRow: {
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 12,
     justifyContent: 'space-around',
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  filterButtonGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   filterBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     borderColor: '#B78BFA',
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#F5F3FF',
+  },
+  filterBtnActive: {
+    backgroundColor: '#8A2BE2',
   },
   filterText: {
     fontSize: 14,
-    color: '#B78BFA',
+    color: '#8A2BE2',
     marginLeft: 6,
     fontWeight: '600',
   },
   filterTextActive: {
     color: '#fff',
-    fontWeight: '700',
   },
-  resetButton: {
-    alignSelf: 'center',
-    marginVertical: 10,
+  loading: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  resetButtonText: {
-    color: '#007AFF',
-    textDecorationLine: 'underline',
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+  },
+  emptyStateText: {
     fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
   },
-  loading: { flex: 1, justifyContent: 'center' },
-  list: { padding: 20 },
-  // Card Styles (old style)
+  list: {
+    padding: 20,
+  },
   card: {
-    backgroundColor: '#F7F2FF',
-    borderRadius: 15,
+    backgroundColor: '#fff',
+    borderRadius: 16,
     marginBottom: 20,
     overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   cardImage: {
     width: width - 40,
     height: 200,
   },
   cardContent: {
-    padding: 15,
+    padding: 20,
   },
   cardTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#333',
+    marginBottom: 4,
   },
   cardUsername: {
     fontSize: 14,
-    color: '#777',
-    marginTop: 2,
+    color: '#666',
+    marginBottom: 8,
   },
   cardCategory: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#B78BFA',
-    marginTop: 2,
+    fontWeight: '600',
+    marginBottom: 12,
   },
   cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 10,
+    alignItems: 'center',
   },
   cardPrice: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
     color: '#333',
   },
   cardDelivery: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#666',
   },
   // Modals
@@ -756,11 +868,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
   },
   modalContent: {
-    width: '90%',
+    width: '95%',
+    maxHeight: '85%',
     backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
+    borderRadius: 20,
+    padding: 18,
     alignItems: 'center',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
   },
   modalTitle: {
     fontSize: 20,
@@ -839,13 +957,17 @@ const styles = StyleSheet.create({
   },
   deliveryRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     alignItems: 'center',
     marginVertical: 10,
     gap: 8,
+    justifyContent: 'center',
   },
   unitSelector: {
     flexDirection: 'row',
     marginLeft: 8,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   unitOption: {
     borderColor: '#B78BFA',
@@ -890,21 +1012,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+    gap: 12,
   },
   modalButton: {
-    backgroundColor: '#D0E8FF',
+    backgroundColor: '#B78BFA',
     padding: 10,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: 0,
+    minWidth: 100,
+    alignItems: 'center',
   },
   modalButtonText: {
-    color: '#007AFF',
+    color: '#fff',
     fontWeight: '600',
+    fontSize: 16,
   },
   resetFilterText: {
-    color: '#007AFF',
+    color: '#B78BFA',
     textDecorationLine: 'underline',
     marginTop: 10,
     fontSize: 16,
+    alignSelf: 'center',
+  },
+  clearFilterButton: {
+    padding: 8,
+    backgroundColor: '#F5F3FF',
+    borderColor: '#B78BFA',
+    borderWidth: 1,
+    borderRadius: 20,
+    marginLeft: 8,
   },
 });

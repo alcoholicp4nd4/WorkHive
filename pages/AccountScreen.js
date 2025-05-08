@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform } from 'react-native';
+import { View, Text, Image, TouchableOpacity, ScrollView, StyleSheet, Alert, Platform, SafeAreaView, StatusBar, ActivityIndicator } from 'react-native';
 import { useState, useEffect } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,16 +21,13 @@ import {
   User,
   Calendar,
   Briefcase,
+  PlusCircle,
+  ChevronRight,
 } from 'lucide-react-native';
 
 const menuItems = [
   { icon: Calendar, label: 'My Bookings', screen: 'MyBooking' },
   { icon: Briefcase, label: 'Provider Bookings', screen: 'BookedServices' },
-  { icon: Settings, label: 'Settings' },
-  { icon: Bell, label: 'Notifications' },
-  { icon: CreditCard, label: 'Payment Methods' },
-  { icon: Shield, label: 'Privacy & Security' },
-  { icon: HelpCircle, label: 'Help & Support' },
 ];
 
 export default function AccountScreen() {
@@ -38,13 +35,17 @@ export default function AccountScreen() {
   const [user, setUser] = useState(null);
   const [profileImage, setProfileImage] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [imageUploadLoading, setImageUploadLoading] = useState(false);
 
   useEffect(() => {
+    setLoading(true);
     const fetchUserData = async () => {
-      const currentUser = await getCurrentUser();
-      if (currentUser) {
-        setUser(currentUser);
-        setProfileImage(currentUser.profileImage || null);
+      const currentUserData = await getCurrentUser();
+      if (currentUserData) {
+        setUser(currentUserData);
+        setProfileImage(currentUserData.profileImage || null);
+      } else {
+        navigation.replace('Login');
       }
       setLoading(false);
     };
@@ -52,7 +53,7 @@ export default function AccountScreen() {
   }, []);
 
   const pickImage = async () => {
-    if (!user) return;
+    if (!user || imageUploadLoading) return;
 
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
@@ -61,207 +62,241 @@ export default function AccountScreen() {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['image'],
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
       aspect: [1, 1],
-      quality: 1,
+      quality: 0.8,
     });
 
-    if (!result.canceled) {
-      setLoading(true);
-      const imageUrl = await uploadProfileImage(result.assets[0].uri, user.uid);
-      if (imageUrl) {
-        setProfileImage(imageUrl);
-        await updateUserProfileImage(user.uid, imageUrl);
+    if (!result.canceled && result.assets && result.assets.length > 0) {
+      setImageUploadLoading(true);
+      try {
+        const imageUrl = await uploadProfileImage(result.assets[0].uri, user.uid);
+        if (imageUrl) {
+          setProfileImage(imageUrl);
+          await updateUserProfileImage(user.uid, imageUrl);
 
-        if (Platform.OS === 'web') {
-          localStorage.setItem(`profileImage_${user.username}`, imageUrl);
+          setUser(prev => ({...prev, profileImage: imageUrl}));
+          
+          Alert.alert('Success', 'Profile picture updated!');
         } else {
-          await AsyncStorage.setItem(`profileImage_${user.username}`, imageUrl);
+          throw new Error('Upload failed to return URL');
         }
-
-        Alert.alert('Success', 'Profile picture updated!');
-      } else {
-        Alert.alert('Error', 'Failed to update profile picture.');
+      } catch (error) {
+        console.error("Image Upload Error:", error);
+        Alert.alert('Error', 'Failed to update profile picture. Please try again.');
+      } finally {
+        setImageUploadLoading(false);
       }
-      setLoading(false);
     }
   };
 
   const handleLogout = async () => {
-    await logoutUser();
-    navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    try {
+      await logoutUser();
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+    } catch (error) {
+      console.error("Logout Error:", error);
+      Alert.alert("Logout Failed", "An error occurred during logout.");
+    }
   };
 
-  return (
-    <ScrollView style={styles.container}>
-      {/* Header with profile info */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={pickImage} disabled={loading} style={{ position: 'relative' }}>
-          <Image
-            source={{ uri: profileImage || 'https://placehold.co/100' }}
-            style={styles.profileImage}
-          />
-          <View style={styles.cameraIcon}>
-            <Camera size={20} color="#fff" />
-          </View>
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#5A31F4" />
+      </SafeAreaView>
+    );
+  }
+  
+  if (!user) {
+    return (
+      <SafeAreaView style={[styles.container, styles.loadingContainer]}>
+        <Text style={styles.errorText}>Could not load user data.</Text>
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <LogOut size={20} color="#fff" />
+          <Text style={styles.logoutButtonText}>Return to Login</Text>
         </TouchableOpacity>
-        <Text style={styles.userName}>{user ? user.username : 'Loading...'}</Text>
-        <Text style={styles.email}>{user ? user.email : 'Loading...'}</Text>
-        {loading && <Text style={styles.uploadingText}>Uploading...</Text>}
-      </View>
+      </SafeAreaView>
+    );
+  }
 
-      {/* View Profile */}
-      <TouchableOpacity
-        style={styles.editProfileButton}
-        onPress={() => navigation.navigate('UserProfileScreen')}
-      >
-        <User size={20} color="#fff" />
-        <Text style={styles.editProfileText}>View Profile</Text>
-      </TouchableOpacity>
-
-      {/* Menu Items */}
-      <View style={styles.menuContainer}>
-        {menuItems.map((item, index) => (
-          <TouchableOpacity 
-            key={index} 
-            style={styles.menuItem}
-            onPress={() => item.screen ? navigation.navigate(item.screen) : null}
-          >
-            <item.icon size={20} color="#4F4F4F" />
-            <Text style={styles.menuLabel}>{item.label}</Text>
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EBFF" translucent={false} />
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={pickImage} disabled={imageUploadLoading} style={styles.profileImageContainer}>
+            <Image
+              source={{ uri: profileImage || 'https://placehold.co/100' }}
+              style={styles.profileImage}
+            />
+            {imageUploadLoading && <ActivityIndicator size="small" color="#FFFFFF" style={styles.imageLoadingIndicator}/>}
           </TouchableOpacity>
-        ))}
-      </View>
+          <Text style={styles.userName}>{user.username}</Text>
+          <Text style={styles.email}>{user.email}</Text>
+        </View>
 
-      {/* Add Service Button */}
-      <TouchableOpacity
-        style={styles.addServiceButton}
-        onPress={() => navigation.navigate('AddServiceScreen')}
-      >
-        <Text style={styles.addServiceButtonText}>Add Service</Text>
-      </TouchableOpacity>
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.outlineButton}
+            onPress={() => navigation.navigate('UserProfileScreen')}
+          >
+            <User size={18} color="#5A31F4" style={styles.buttonIcon}/>
+            <Text style={styles.outlineButtonText}>View Profile</Text>
+          </TouchableOpacity>
 
-      {/* Logout Button */}
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <LogOut size={20} color="#fff" />
-        <Text style={styles.logoutButtonText}>Log Out</Text>
-      </TouchableOpacity>
-    </ScrollView>
+          <TouchableOpacity
+            style={styles.outlineButton}
+            onPress={() => navigation.navigate('AddServiceScreen')}
+          >
+            <PlusCircle size={18} color="#5A31F4" style={styles.buttonIcon}/>
+            <Text style={styles.outlineButtonText}>Add Service</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.menuContainer}>
+          {menuItems.map((item, index) => (
+            <TouchableOpacity 
+              key={index} 
+              style={styles.menuItemCard}
+              onPress={() => item.screen ? navigation.navigate(item.screen) : Alert.alert('Coming Soon', `${item.label} feature is not yet available.`)}
+            >
+              <item.icon size={22} color="#5A31F4" />
+              <Text style={styles.menuLabel}>{item.label}</Text>
+              <ChevronRight size={20} color="#A0AEC0" style={styles.menuChevron} />
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+          <LogOut size={20} color="#DC2626" />
+          <Text style={styles.logoutButtonText}>Log Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F4EBFF',
+  },
   container: {
     flex: 1,
-    backgroundColor: '#F2ECFA', // Soft pastel background
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F4EBFF',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 16,
+    marginBottom: 20,
   },
   header: {
     alignItems: 'center',
-    paddingTop: 50,
-    paddingBottom: 40,
-    backgroundColor: '#B78BFA', // Pastel purple header
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    marginBottom: 30,
+    paddingTop: 30,
+    paddingBottom: 30,
+    backgroundColor: '#F4EBFF',
+  },
+  profileImageContainer: {
+    position: 'relative',
+    marginBottom: 10,
   },
   profileImage: {
     width: 100,
     height: 100,
     borderRadius: 50,
-    borderWidth: 2,
-    borderColor: '#fff',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
   },
-  cameraIcon: {
+  imageLoadingIndicator: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: '#00000099',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 50,
-    padding: 3,
   },
   userName: {
-    marginTop: 15,
+    marginTop: 8,
     fontSize: 22,
     fontWeight: 'bold',
-    color: '#fff',
+    color: '#2D1B5A',
   },
   email: {
-    fontSize: 14,
-    color: '#fff',
-    marginTop: 5,
+    fontSize: 15,
+    color: '#6B7280',
+    marginTop: 4,
   },
-  uploadingText: {
-    marginTop: 5,
-    color: '#fff',
-    fontSize: 12,
+  buttonContainer: {
+    paddingHorizontal: 20,
+    marginTop: 25,
+    gap: 15,
   },
-  editProfileButton: {
+  outlineButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'center',
-    backgroundColor: '#6C2ED9',
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 25,
-    marginBottom: 20,
-    marginTop: -15, // Slight overlap below header
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 3,
-    elevation: 3,
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#B78BFA',
+    paddingVertical: 14,
+    borderRadius: 10,
   },
-  editProfileText: {
-    color: '#fff',
-    fontSize: 15,
+  outlineButtonText: {
+    color: '#5A31F4',
+    fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
+  },
+  buttonIcon: {
+    marginRight: 8,
   },
   menuContainer: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginTop: 35,
+    marginBottom: 25,
   },
-  menuItem: {
+  menuItemCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FCE3B7', // Lighter peach color
-    padding: 14,
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 18,
+    paddingHorizontal: 16,
     borderRadius: 12,
-    marginBottom: 14,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 3.00,
+    elevation: 2,
   },
   menuLabel: {
-    marginLeft: 10,
-    fontSize: 15,
-    color: '#4F4F4F',
-    fontWeight: '600',
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 16,
+    color: '#2D1B5A',
+    fontWeight: '500',
   },
-  addServiceButton: {
-    backgroundColor: '#E6D1FF',
-    marginHorizontal: 20,
-    marginBottom: 20,
-    borderRadius: 12,
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  addServiceButtonText: {
-    fontSize: 15,
-    color: '#4E2E8C',
-    fontWeight: '600',
+  menuChevron: {
+    marginLeft: 8,
   },
   logoutButton: {
     flexDirection: 'row',
-    backgroundColor: '#CF4C4C',
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#DC2626',
     marginHorizontal: 20,
     marginBottom: 50,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 13,
   },
   logoutButtonText: {
-    fontSize: 15,
-    color: '#fff',
+    fontSize: 16,
+    color: '#DC2626',
     marginLeft: 8,
     fontWeight: '600',
   },

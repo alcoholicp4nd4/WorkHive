@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getAuth } from 'firebase/auth';
 import { Heart } from 'lucide-react-native';
@@ -8,6 +8,7 @@ import { Heart } from 'lucide-react-native';
 const FavoriteButton = ({ serviceId, onFavoriteChange }) => {
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteId, setFavoriteId] = useState(null);
+  const [serviceOwnerId, setServiceOwnerId] = useState(null);
   const auth = getAuth();
   const currentUser = auth.currentUser;
 
@@ -15,7 +16,26 @@ const FavoriteButton = ({ serviceId, onFavoriteChange }) => {
     if (currentUser) {
       checkFavoriteStatus();
     }
+    if (serviceId) {
+      fetchServiceOwner();
+    }
   }, [serviceId, currentUser]);
+
+  const fetchServiceOwner = async () => {
+    try {
+      const serviceRef = doc(db, 'services', serviceId);
+      const serviceSnap = await getDoc(serviceRef);
+      if (serviceSnap.exists()) {
+        setServiceOwnerId(serviceSnap.data().userId);
+      } else {
+        console.log("No such service document!");
+        setServiceOwnerId(null);
+      }
+    } catch (error) {
+      console.error("Error fetching service owner:", error);
+      setServiceOwnerId(null);
+    }
+  };
 
   const checkFavoriteStatus = async () => {
     try {
@@ -41,21 +61,22 @@ const FavoriteButton = ({ serviceId, onFavoriteChange }) => {
 
   const toggleFavorite = async () => {
     if (!currentUser) {
-      alert('Please login to add favorites');
+      Alert.alert('Login Required', 'Please login to add favorites');
+      return;
+    }
+
+    if (serviceOwnerId && currentUser.uid === serviceOwnerId) {
+      Alert.alert('Action Not Allowed', 'You cannot favorite your own service.');
       return;
     }
 
     try {
       if (isFavorite) {
-        // Remove from favorites
         await deleteDoc(doc(db, 'favorites', favoriteId));
         setIsFavorite(false);
         setFavoriteId(null);
-        if (onFavoriteChange) {
-          onFavoriteChange(false);
-        }
+        if (onFavoriteChange) onFavoriteChange(false);
       } else {
-        // Add to favorites
         const favoritesRef = collection(db, 'favorites');
         const newFavorite = await addDoc(favoritesRef, {
           userId: currentUser.uid,
@@ -64,15 +85,28 @@ const FavoriteButton = ({ serviceId, onFavoriteChange }) => {
         });
         setIsFavorite(true);
         setFavoriteId(newFavorite.id);
-        if (onFavoriteChange) {
-          onFavoriteChange(true);
-        }
+        if (onFavoriteChange) onFavoriteChange(true);
       }
     } catch (error) {
       console.error('Error toggling favorite:', error);
-      alert('Failed to update favorite status');
+      Alert.alert('Error', 'Failed to update favorite status');
     }
   };
+
+  if (serviceOwnerId && currentUser && currentUser.uid === serviceOwnerId) {
+    return (
+      <TouchableOpacity
+        style={[styles.favoriteButton, styles.disabledFavoriteButton]}
+        disabled={true}
+      >
+        <Heart
+          size={24}
+          color={'#ccc'}
+          fill={'none'}
+        />
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <TouchableOpacity
@@ -98,6 +132,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  disabledFavoriteButton: {
+    backgroundColor: '#f0f0f0',
   },
 });
 

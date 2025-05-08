@@ -15,7 +15,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
-import { ArrowLeft, Clock, Calendar, MapPin, User, DollarSign, AlertCircle, Flag } from 'lucide-react-native';
+import { ArrowLeft, Clock, Calendar, MapPin, User, Landmark, AlertCircle, Flag } from 'lucide-react-native';
 import ServiceRating from '../Components/ServiceRating';
 
 export default function BookingDetailsScreen({ route }) {
@@ -92,29 +92,27 @@ export default function BookingDetailsScreen({ route }) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#0000ff" />
-        <Text>Loading booking details...</Text>
-      </View>
+      <SafeAreaView style={[styles.safeArea, styles.loadingContainer]}>
+        <ActivityIndicator size="large" color="#5A31F4" />
+        <Text style={styles.loadingText}>Loading booking details...</Text>
+      </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView style={styles.container}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <ArrowLeft size={24} color="#000" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Booking Details</Text>
-        </View>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <View style={styles.header}>
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => navigation.goBack()}
+        >
+          <ArrowLeft size={24} color="#2D1B5A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Booking Details</Text>
+      </View>
 
-        {/* Service Image */}
+      <ScrollView style={styles.scrollContainer}>
         {service?.images?.[0] && (
           <Image 
             source={{ uri: service.images[0] }} 
@@ -123,108 +121,109 @@ export default function BookingDetailsScreen({ route }) {
           />
         )}
 
-        {/* Service Title */}
-        <View style={styles.section}>
-          <Text style={styles.serviceTitle}>{service?.title}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking?.status) }]}>
-            <Text style={styles.statusText}>{booking?.status?.toUpperCase()}</Text>
-          </View>
-        </View>
-
-        {/* Booking Information */}
-        <View style={styles.infoContainer}>
-          <View style={styles.infoRow}>
-            <Clock size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Booked on: {formatDate(booking?.createdAt)}</Text>
+        <View style={styles.contentPadding}>
+          <View style={styles.titleSection}>
+            <Text style={styles.serviceTitle}>{service?.title || 'Service Title N/A'}</Text>
+            {booking?.status && (
+                <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+                    <Text style={styles.statusText}>{booking.status.toUpperCase()}</Text>
+                </View>
+            )}
           </View>
 
-          <View style={styles.infoRow}>
-            <Calendar size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Delivery Time: {service?.deliveryTime}</Text>
+          <View style={styles.cardStyle}> 
+            <Text style={styles.cardHeader}>Booking Information</Text>
+            <View style={styles.infoRow}>
+              <Calendar size={18} color="#5A31F4" />
+              <Text style={styles.infoLabel}>Booked on:</Text>
+              <Text style={styles.infoValue}>{formatDate(booking?.createdAt)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Clock size={18} color="#5A31F4" />
+              <Text style={styles.infoLabel}>Delivery:</Text>
+              <Text style={styles.infoValue}>{service?.deliveryTime || 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Landmark size={18} color="#5A31F4" /> 
+              <Text style={styles.infoLabel}>Price:</Text>
+              <Text style={styles.infoValue}>{service?.price ? `${service.price} TND` : 'N/A'}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <MapPin size={18} color="#5A31F4" />
+              <Text style={styles.infoLabel}>Location:</Text>
+              <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="tail">{formatLocation(service?.location)}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <User size={18} color="#5A31F4" />
+              <Text style={styles.infoLabel}>Provider:</Text>
+              <Text style={styles.infoValue}>{provider?.username || 'N/A'}</Text>
+            </View>
           </View>
 
-          <View style={styles.infoRow}>
-            <DollarSign size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Price: ${service?.price}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <MapPin size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Location: {formatLocation(service?.location)}</Text>
-          </View>
-
-          <View style={styles.infoRow}>
-            <User size={20} color="#6B7280" />
-            <Text style={styles.infoText}>Provider: {provider?.username}</Text>
-          </View>
-        </View>
-
-        {/* Service Description */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Service Description</Text>
-          <Text style={styles.description}>{service?.description}</Text>
-        </View>
-
-        {/* Rating Section - Only show for completed bookings */}
-        {booking?.status === 'completed' && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Rate this Service</Text>
-            <ServiceRating 
-              serviceId={serviceId} 
-              onRatingSubmit={(rating) => {
-                Alert.alert('Success', 'Thank you for your rating!');
-              }}
-            />
-          </View>
-        )}
-
-        {/* Cancellation Policy */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Cancellation Policy</Text>
-          <View style={styles.policyContainer}>
-            <AlertCircle size={20} color="#F59E0B" />
-            <Text style={styles.policyText}>
-              You can cancel this booking within 24 hours of making it. After that, the cancellation period will expire.
-            </Text>
-          </View>
-        </View>
-
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          {booking?.status === 'pending' && (
-            <TouchableOpacity 
-              style={[styles.button, styles.cancelButton]}
-              onPress={() => {
-                Alert.alert(
-                  'Cancel Booking',
-                  'Are you sure you want to cancel this booking?',
-                  [
-                    { text: 'No', style: 'cancel' },
-                    { 
-                      text: 'Yes', 
-                      onPress: () => {
-                        // Add cancel booking logic here
-                        navigation.goBack();
-                      }
-                    }
-                  ]
-                );
-              }}
-            >
-              <Text style={styles.buttonText}>Cancel Booking</Text>
-            </TouchableOpacity>
+          {service?.description && (
+            <View style={styles.cardStyle}>
+              <Text style={styles.cardHeader}>Service Description</Text>
+              <Text style={styles.descriptionText}>{service.description}</Text>
+            </View>
           )}
-          <TouchableOpacity 
-            style={[styles.button, styles.reportButton]}
-            onPress={() => navigation.navigate('ReportForm', {
-              bookingId,
-              serviceId,
-              providerId
-            })}
-          >
-            <Flag size={20} color="#fff" style={styles.buttonIcon} />
-            <Text style={styles.buttonText}>Report Issue</Text>
-          </TouchableOpacity>
+
+          {booking?.status === 'completed' && (
+            <View style={styles.cardStyle}>
+              <ServiceRating 
+                serviceId={serviceId} 
+                onRatingSubmit={(rating) => {
+                  Alert.alert('Success', 'Thank you for your rating!');
+                }}
+              />
+            </View>
+          )}
+
+          <View style={styles.cardStyle}> 
+            <Text style={styles.cardHeader}>Cancellation Policy</Text>
+            <View style={styles.policyContainer}>
+              <AlertCircle size={20} color="#F59E0B" style={{marginRight: 8}}/>
+              <Text style={styles.policyText}>
+                You can cancel this booking within 24 hours of making it. After that, the cancellation period will expire.
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.actionButtonsContainer}>
+            {booking?.status === 'pending' && (
+              <TouchableOpacity 
+                style={[styles.buttonBase, styles.cancelButton]}
+                onPress={() => {
+                  Alert.alert(
+                    'Cancel Booking',
+                    'Are you sure you want to cancel this booking?',
+                    [
+                      { text: 'No', style: 'cancel' },
+                      { 
+                        text: 'Yes', 
+                        onPress: () => { 
+                          // Actual cancel logic needed here
+                           navigation.goBack(); 
+                        }
+                      }
+                    ]
+                  );
+                }}
+              >
+                <Text style={[styles.buttonTextBase, styles.cancelButtonText]}>Cancel Booking</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity 
+              style={[styles.buttonBase, styles.reportButton]}
+              onPress={() => navigation.navigate('ReportForm', {
+                bookingId,
+                serviceId,
+                providerId
+              })}
+            >
+              <Flag size={18} color="#FFFFFF" style={styles.buttonIcon} />
+              <Text style={[styles.buttonTextBase, styles.reportButtonText]}>Report Issue</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -234,115 +233,165 @@ export default function BookingDetailsScreen({ route }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#fff',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+    backgroundColor: '#F4EBFF', // Themed background for content area
   },
-  container: {
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF', 
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    padding: 8, // Increased touch area
+    marginRight: 12, // Spacing from title
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D1B5A', // Themed text color
+  },
+  scrollContainer: {
     flex: 1,
-    backgroundColor: '#fff',
+    // backgroundColor is inherited from safeArea or can be set if different needed for scroll part
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F4EBFF', // Match theme
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  loadingText: {
+      marginTop: 10,
+      fontSize: 16,
+      color: '#5A31F4' // Themed loading text
   },
   serviceImage: {
     width: '100%',
-    height: 200,
+    height: 220, // Standardized image height
+    marginBottom: 16,
   },
-  section: {
-    padding: 20,
-    backgroundColor: '#fff',
-    marginBottom: 10,
+  contentPadding: {
+    paddingHorizontal: 16,
+  },
+  titleSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8, // Add some padding around title and badge
   },
   serviceTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    marginBottom: 8,
+    color: '#2D1B5A',
+    flexShrink: 1, // Allow title to shrink
   },
   statusBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15, // Rounded badge
+    marginLeft: 8,
   },
   statusText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 11, // Slightly smaller
   },
-  infoContainer: {
+  cardStyle: { // New style for sections to look like cards
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     padding: 16,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05, // Softer shadow
+    shadowRadius: 2.00,
+    elevation: 2,
+  },
+  cardHeader: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2D1B5A',
+    marginBottom: 12,
   },
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  infoText: {
-    marginLeft: 12,
-    fontSize: 16,
-    color: '#4B5563',
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
     marginBottom: 10,
-    color: '#333',
   },
-  description: {
-    fontSize: 16,
-    color: '#4B5563',
-    lineHeight: 24,
+  infoLabel: {
+    marginLeft: 10,
+    fontSize: 15,
+    color: '#4A5568', // Subtler label color
+    marginRight: 5,
+    fontWeight: '500',
+  },
+  infoValue: {
+    fontSize: 15,
+    color: '#2D3748', // Darker value text
+    flexShrink: 1, // Allow text to shrink
+  },
+  descriptionText: { // Renamed from description for clarity
+    fontSize: 15,
+    color: '#4A5568',
+    lineHeight: 22, // Improved readability
   },
   policyContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: '#FFFBEB',
+    alignItems: 'center',
+    backgroundColor: '#FEF3C7', // Lighter yellow for info/warning
     padding: 12,
     borderRadius: 8,
   },
   policyText: {
     marginLeft: 8,
     flex: 1,
-    color: '#92400E',
+    color: '#78350F', // Darker text for readability on yellow
     fontSize: 14,
   },
-  actionButtons: {
-    padding: 16,
-    gap: 12,
+  actionButtonsContainer: { // Renamed from actionButtons
+    marginTop: 16, // Add space above buttons
+    marginBottom: 24, // Add space below buttons
+    gap: 12, 
   },
-  button: {
-    padding: 16,
-    borderRadius: 8,
+  buttonBase: { // Base style for all buttons
+    paddingVertical: 14, // Consistent padding
+    borderRadius: 10, // Consistent border radius
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.00,
+    elevation: 3,
   },
-  cancelButton: {
-    backgroundColor: '#EF4444',
-  },
-  reportButton: {
-    backgroundColor: '#F59E0B',
-  },
-  buttonText: {
-    color: '#fff',
+  buttonTextBase: { // Base style for button text
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  cancelButton: {
+    backgroundColor: '#FEE2E2', // Lighter red for inactive state feel
+    borderWidth: 1,
+    borderColor: '#DC2626' // Red border
+  },
+  cancelButtonText: {
+      color: '#DC2626', // Red text
+  },
+  reportButton: {
+    backgroundColor: '#5A31F4', // Primary app color
+  },
+  reportButtonText: {
+      color: '#FFFFFF', // White text
   },
   buttonIcon: {
     marginRight: 8,

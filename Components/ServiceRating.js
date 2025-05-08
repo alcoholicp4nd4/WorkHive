@@ -183,10 +183,10 @@ const ServiceRating = ({ serviceId, onRatingSubmit, readOnly = false }) => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 15,
-    backgroundColor: '#fff',
-    borderRadius: 10,
+    backgroundColor: 'transparent',
     marginVertical: 10,
+    padding: 0,
+    borderRadius: 0,
   },
   title: {
     fontSize: 16,

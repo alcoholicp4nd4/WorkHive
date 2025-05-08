@@ -12,7 +12,9 @@ import {
   ScrollView,
   Dimensions,
   Platform,
-  Modal
+  Modal,
+  SafeAreaView,
+  StatusBar
 } from 'react-native';
 import DropDownPicker from 'react-native-dropdown-picker';
 import * as ImagePicker from 'expo-image-picker';
@@ -22,6 +24,8 @@ import Slider from '@react-native-community/slider';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../database/firebaseConfig';
 import { getCurrentUser } from '../database/authDatabase';
+import { ArrowLeft, MapPin, ImagePlus, Check, Trash2 } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 const isWeb = Platform.OS === 'web';
@@ -109,15 +113,15 @@ export default function AddServiceScreen() {
   const [radiusService, setRadiusService] = useState(5);
   const [locationModalVisible, setLocationModalVisible] = useState(false);
   const [mapRegion, setMapRegion] = useState(null);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchUser = async () => {
       const user = await getCurrentUser();
       if (user) {
         setUsername(user.username);
-        if (!user.isProvider) {
-          Alert.alert("Access Denied", "Only service providers can add services.");
-        }
+      } else {
+        navigation.replace('Login');
       }
     };
     fetchUser();
@@ -212,11 +216,8 @@ export default function AddServiceScreen() {
     try {
       const imageUrls = await uploadImages();
       const user = await getCurrentUser();
-      if (!user) {
-        Alert.alert('Error', 'User not authenticated.');
-        setLoading(false);
-        return;
-      }
+      if (!user) throw new Error('User not authenticated.');
+      
       const serviceData = {
         title,
         description,
@@ -251,161 +252,172 @@ export default function AddServiceScreen() {
       setLocationService(null);
       setRadiusService(5);
       setMapRegion(null);
+      navigation.goBack();
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Something went wrong while adding the service.');
+      console.error('Error submitting service:', error);
+      Alert.alert('Error', error.message || 'Something went wrong while adding the service.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView nestedScrollEnabled={true} contentContainerStyle={styles.container}>
-      <View style={styles.formWrapper}>
-        <Text style={styles.heading}>Add New Service</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Service Title"
-          value={title}
-          onChangeText={setTitle}
-        />
-        <TextInput
-          style={[styles.input, { height: 80 }]}
-          placeholder="Service Description"
-          value={description}
-          onChangeText={setDescription}
-          multiline
-        />
-        <Text style={styles.label}>Category</Text>
-        {/* Wrap DropDownPicker with a View to handle zIndex */}
-        <View style={{ zIndex: 3000, marginBottom: 15 }}>
-          <DropDownPicker
-            open={open}
-            value={category}
-            items={categories}
-            setOpen={setOpen}
-            setValue={setCategory}
-            setItems={setCategories}
-            placeholder="Select a category"
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownContainer}
-            searchable={true}
-            searchPlaceholder="Search categories..."
-            listMode="MODAL"
-          />
-        </View>
-        <Text style={styles.label}>Service Type</Text>
-        <View style={styles.row}>
-          {['remote', 'in-person'].map((type) => (
-            <TouchableOpacity key={type} onPress={() => setServiceType(type)}>
-              <Text style={[styles.radio, serviceType === type && styles.radioSelected]}>
-                {type === 'remote' ? 'Remote' : 'In-Person'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <Text style={styles.label}>Pricing</Text>
-        <View style={styles.row}>
-          {['flat', 'hourly'].map((type) => (
-            <TouchableOpacity key={type} onPress={() => setPriceType(type)}>
-              <Text style={[styles.radio, priceType === type && styles.radioSelected]}>
-                {type === 'flat' ? 'Flat Rate' : 'Hourly'}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <TextInput
-          style={styles.input}
-          placeholder="Enter price (e.g. 50)"
-          value={price}
-          onChangeText={setPrice}
-          keyboardType="numeric"
-        />
-        {/* Delivery Time Split: Numeric value and Unit */}
-        <Text style={styles.label}>Estimated Delivery Time</Text>
-        <View style={styles.deliveryRow}>
-          <TextInput
-            style={[styles.input, { flex: 1 }]}
-            placeholder="e.g. 3"
-            value={deliveryTimeValue}
-            onChangeText={setDeliveryTimeValue}
-            keyboardType="numeric"
-          />
-          <View style={styles.unitSelector}>
-            <TouchableOpacity
-              style={[
-                styles.unitOption,
-                deliveryTimeUnit === 'days' && styles.unitOptionSelected,
-              ]}
-              onPress={() => setDeliveryTimeUnit('days')}
-            >
-              <Text
-                style={[
-                  styles.unitOptionText,
-                  deliveryTimeUnit === 'days' && styles.unitOptionTextSelected,
-                ]}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={24} color="#2D1B5A" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Add New Service</Text>
+      </View>
+
+      <ScrollView nestedScrollEnabled={true} contentContainerStyle={styles.scrollContainer}>
+        <View style={styles.formPadding}>
+          <Text style={styles.label}>Service Title</Text>
+          <TextInput style={styles.input} placeholder="e.g., Professional Logo Design" value={title} onChangeText={setTitle} placeholderTextColor="#A0AEC0" />
+          
+          <Text style={styles.label}>Service Description</Text>
+          <TextInput style={[styles.input, styles.textArea]} placeholder="Describe your service in detail..." value={description} onChangeText={setDescription} multiline placeholderTextColor="#A0AEC0" />
+          
+          <Text style={styles.label}>Category</Text>
+          <View style={{ zIndex: 3000, marginBottom: 20 }}>
+            <DropDownPicker
+              open={open}
+              value={category}
+              items={categories}
+              setOpen={setOpen}
+              setValue={setCategory}
+              setItems={setCategories}
+              placeholder="Select a category"
+              style={styles.dropdown}
+              placeholderStyle={styles.dropdownPlaceholder}
+              dropDownContainerStyle={styles.dropdownContainer}
+              listItemLabelStyle={styles.dropdownItemLabel}
+              selectedItemLabelStyle={styles.dropdownSelectedItemLabel}
+              searchable={true}
+              searchPlaceholder="Search categories..."
+              listMode="MODAL"
+              modalProps={{ animationType: 'slide' }}
+              modalTitle="Select Category"
+              theme="LIGHT"
+              zIndex={3000}
+              zIndexInverse={1000}
+            />
+          </View>
+
+          <Text style={styles.label}>Service Type</Text>
+          <View style={styles.radioGroup}>
+            {['remote', 'in-person'].map((type) => (
+              <TouchableOpacity 
+                key={type} 
+                style={[styles.radioButton, serviceType === type && styles.radioButtonSelected]}
+                onPress={() => setServiceType(type)}
               >
-                Days
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[
-                styles.unitOption,
-                deliveryTimeUnit === 'months' && styles.unitOptionSelected,
-              ]}
-              onPress={() => setDeliveryTimeUnit('months')}
-            >
-              <Text
-                style={[
-                  styles.unitOptionText,
-                  deliveryTimeUnit === 'months' && styles.unitOptionTextSelected,
-                ]}
+                <Text style={[styles.radioText, serviceType === type && styles.radioTextSelected]}>
+                  {type === 'remote' ? 'Remote' : 'In-Person'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Pricing Type</Text>
+          <View style={styles.radioGroup}>
+            {['flat', 'hourly'].map((type) => (
+              <TouchableOpacity 
+                key={type} 
+                style={[styles.radioButton, priceType === type && styles.radioButtonSelected]}
+                onPress={() => setPriceType(type)}
               >
-                Months
-              </Text>
+                <Text style={[styles.radioText, priceType === type && styles.radioTextSelected]}>
+                  {type === 'flat' ? 'Flat Rate' : 'Hourly'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Price (in TND)</Text>
+          <TextInput style={styles.input} placeholder="e.g. 150" value={price} onChangeText={setPrice} keyboardType="numeric" placeholderTextColor="#A0AEC0" />
+
+          <Text style={styles.label}>Estimated Delivery Time</Text>
+          <View style={styles.deliveryRow}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginRight: 10 }]}
+              placeholder="e.g. 3"
+              value={deliveryTimeValue}
+              onChangeText={setDeliveryTimeValue}
+              keyboardType="numeric"
+              placeholderTextColor="#A0AEC0"
+            />
+            <View style={styles.unitSelector}>
+              {['days', 'months'].map(unit => (
+                 <TouchableOpacity
+                    key={unit}
+                    style={[styles.unitOption, deliveryTimeUnit === unit && styles.unitOptionSelected]}
+                    onPress={() => setDeliveryTimeUnit(unit)}
+                  >
+                    <Text style={[styles.unitOptionText, deliveryTimeUnit === unit && styles.unitOptionTextSelected]}>
+                      {unit.charAt(0).toUpperCase() + unit.slice(1)} 
+                    </Text>
+                  </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          <Text style={styles.label}>Service Location (Optional)</Text>
+           <TouchableOpacity
+            style={styles.secondaryButton} 
+            onPress={() => setLocationModalVisible(true)}
+          >
+            <MapPin size={18} color="#5A31F4" style={{marginRight: 8}}/>
+            <Text style={styles.secondaryButtonText}>Set Location & Radius</Text>
+          </TouchableOpacity>
+          {locationService && (
+            <Text style={styles.infoText}>
+              Location Set: {locationService.latitude.toFixed(4)}, {locationService.longitude.toFixed(4)} (Radius: {radiusService} km)
+            </Text>
+          )}
+
+          <Text style={styles.label}>Service Images (Optional, Max 5)</Text>
+          <TouchableOpacity style={styles.secondaryButton} onPress={pickImages}>
+            <ImagePlus size={18} color="#5A31F4" style={{marginRight: 8}}/>
+            <Text style={styles.secondaryButtonText}>Add Images</Text>
+          </TouchableOpacity>
+          
+          {images.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagePreviewContainer}>
+              {images.map((uri, index) => (
+                <View key={index} style={styles.imageThumbContainer}>
+                  <Image source={{ uri }} style={styles.imagePreview} />
+                  <TouchableOpacity 
+                    onPress={() => setImages(prev => prev.filter((_, i) => i !== index))} 
+                    style={styles.removeImageButton}
+                   >
+                    <Trash2 size={16} color="#FFFFFF" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          <View style={styles.submitButtonContainer}>
+            <TouchableOpacity 
+              style={[styles.primaryButton, loading && styles.buttonDisabled]}
+              onPress={handleSubmit} 
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color="#5A31F4" />
+              ) : (
+                <>
+                  <Check size={20} color="#5A31F4" style={{marginRight: 8}}/>
+                  <Text style={styles.primaryButtonText}>Add Service</Text>
+                </>
+              )}
             </TouchableOpacity>
           </View>
         </View>
-        {/* Location selection */}
-        <TouchableOpacity
-          style={styles.locationButton}
-          onPress={() => {
-            // This modal opens on mobile to set location & service radius
-            setLocationModalVisible(true);
-          }}
-        >
-          <Text style={styles.locationButtonText}>Set Location & Radius</Text>
-        </TouchableOpacity>
-        {locationService && (
-          <Text style={styles.infoText}>
-            Selected Location: {locationService.latitude.toFixed(4)}, {locationService.longitude.toFixed(4)}
-          </Text>
-        )}
-        <Text style={styles.infoText}>Service Radius: {radiusService} km</Text>
-        <TouchableOpacity style={styles.imageButton} onPress={pickImages}>
-          <Text style={styles.imageButtonText}>Add Images (Max 5)</Text>
-        </TouchableOpacity>
-        {images.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imageScroll}>
-            {images.map((uri, index) => (
-              <View key={index} style={styles.imageThumb}>
-                <Image source={{ uri }} style={styles.image} />
-                <TouchableOpacity onPress={() => setImages(images.filter((_, i) => i !== index))} style={styles.removeBtn}>
-                  <Text style={styles.removeText}>✕</Text>
-                </TouchableOpacity>
-              </View>
-            ))}
-          </ScrollView>
-        )}
-        <View style={styles.buttonContainer}>
-          {loading ? (
-            <ActivityIndicator size="large" color="#B78BFA" />
-          ) : (
-            <Button title="Submit" onPress={handleSubmit} color="#B78BFA" />
-          )}
-        </View>
-      </View>
-      {/* Location Modal */}
+      </ScrollView>
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -465,215 +477,229 @@ export default function AddServiceScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F4EBFF',
+  },
   container: {
-    padding: isWeb ? 40 : 20,
-    backgroundColor: '#f0f2f5',
     flexGrow: 1,
+    backgroundColor: '#F4EBFF',
+  },
+  scrollContainer: {
+    paddingBottom: 40,
+  },
+  centered: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  formWrapper: {
-    width: '100%',
-    maxWidth: isWeb ? 700 : '100%',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF', 
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  heading: {
-    fontSize: isWeb ? 28 : 22,
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-    marginBottom: 20,
-    textAlign: 'center',
-    color: '#333',
+    color: '#2D1B5A',
+    marginLeft: 16,
   },
-  input: {
-    height: 50,
-    borderColor: '#ccc',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    marginBottom: 15,
-    backgroundColor: '#fff',
-    fontSize: isWeb ? 18 : 16,
+  formPadding: {
+    padding: 20,
   },
   label: {
-    fontSize: isWeb ? 18 : 16,
-    marginBottom: 6,
-    color: '#444',
+    fontSize: 16, 
+    fontWeight: '600',
+    color: '#4A5568',
+    marginBottom: 8,
+    marginTop: 10,
+  },
+  input: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#2D3748',
+    borderWidth: 1,
+    borderColor: '#CBD5E0', 
+    marginBottom: 20,
+  },
+  textArea: {
+    height: 100,
+    textAlignVertical: 'top', 
   },
   dropdown: {
-    borderColor: '#ccc',
-    borderRadius: 8,
-    marginBottom: 15,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E0',
+    borderRadius: 10,
+    height: 50,
   },
+   dropdownPlaceholder: {
+       color: "#A0AEC0",
+   },
   dropdownContainer: {
-    borderColor: '#ccc',
-    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#CBD5E0',
+    borderRadius: 10,
   },
-  row: {
+  dropdownItemLabel: {
+      color: '#4A5568'
+  },
+  dropdownSelectedItemLabel: {
+      color: '#2D1B5A',
+      fontWeight: "bold",
+  },
+  radioGroup: {
     flexDirection: 'row',
+    marginBottom: 20,
     flexWrap: 'wrap',
     gap: 10,
-    marginBottom: 15,
   },
-  radio: {
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderWidth: 1,
-    borderColor: '#ccc',
+  radioButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    borderWidth: 1.5,
+    borderColor: '#B78BFA',
     borderRadius: 20,
-    marginRight: 10,
-    color: '#555',
+    backgroundColor: '#FFFFFF',
   },
-  radioSelected: {
+  radioButtonSelected: {
     backgroundColor: '#B78BFA',
-    color: '#fff',
     borderColor: '#B78BFA',
   },
-  imageButton: {
-    backgroundColor: '#E3D1FF',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
+  radioText: {
+    color: '#5A31F4',
+    fontWeight: '500',
   },
-  imageButtonText: {
-    color: '#6C2D9',
+  radioTextSelected: {
+    color: '#FFFFFF',
     fontWeight: '600',
-  },
-  imageScroll: {
-    marginVertical: 10,
-  },
-  imageThumb: {
-    position: 'relative',
-    marginRight: 10,
-  },
-  image: {
-    width: 100,
-    height: 100,
-    borderRadius: 8,
-  },
-  removeBtn: {
-    position: 'absolute',
-    top: -8,
-    right: -8,
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 4,
-  },
-  removeText: {
-    color: 'red',
-    fontWeight: 'bold',
-  },
-  buttonContainer: {
-    marginTop: 10,
-    borderRadius: 8,
-  },
-  locationButton: {
-    backgroundColor: '#D0E8FF',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  locationButtonText: {
-    color: '#007AFF',
-    fontWeight: '600',
-  },
-  infoText: {
-    marginBottom: 10,
-    fontSize: 16,
-    color: '#333',
-    textAlign: 'center',
   },
   deliveryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-    gap: 10,
+    marginBottom: 20,
   },
   unitSelector: {
     flexDirection: 'row',
+    marginLeft: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#CBD5E0',
+    overflow: 'hidden',
   },
   unitOption: {
-    borderColor: '#B78BFA',
-    borderWidth: 1,
-    borderRadius: 20,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginRight: 10,
-    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 15,
+    borderLeftWidth: 1,
+    borderLeftColor: '#E2E8F0',
   },
   unitOptionSelected: {
-    backgroundColor: '#B78BFA',
+    backgroundColor: '#EFE3FF',
   },
   unitOptionText: {
-    fontSize: 14,
-    color: '#B78BFA',
-    fontWeight: '600',
+    fontSize: 15,
+    color: '#5A31F4',
+    fontWeight: '500',
   },
   unitOptionTextSelected: {
-    color: '#fff',
     fontWeight: '700',
   },
-  // Modal & Map Styles
-  locationModalContainer: {
-    flex: 1,
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  locationModal: {
-    width: '90%',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1.5,
+    borderColor: '#B78BFA',
+    paddingVertical: 12,
     borderRadius: 10,
-    padding: 15,
-    alignItems: 'center',
-  },
-  locationModalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-  },
-  modalButton: {
-    backgroundColor: '#D0E8FF',
-    padding: 10,
-    borderRadius: 8,
     marginBottom: 10,
+    marginTop: 5,
   },
-  modalButtonText: {
-    color: '#007AFF',
+  secondaryButtonText: {
+    color: '#5A31F4',
+    fontSize: 16,
     fontWeight: '600',
   },
-  sliderContainer: {
-    width: '90%',
-    alignItems: 'center',
-    marginVertical: 10,
+  infoText: {
+    marginTop: 5,
+    marginBottom: 15,
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
   },
-  sliderLabel: {
-    fontSize: 16,
-    marginBottom: 5,
+  imagePreviewContainer: {
+      marginVertical: 15,
+      paddingLeft: 5,
   },
-  slider: {
-    width: '100%',
-    height: 40,
+  imageThumbContainer: {
+      position: 'relative',
+      marginRight: 10,
   },
-  map: {
-    width: '100%',
-    height: 200,
-    marginBottom: 10,
+  imagePreview: {
+      width: 100,
+      height: 100,
+      borderRadius: 8,
+      backgroundColor: '#E0E0E0',
   },
-  modalButtonRow: {
+  removeImageButton: {
+      position: 'absolute',
+      top: 5, 
+      right: 5,
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      borderRadius: 15,
+      width: 24, 
+      height: 24,
+      justifyContent: 'center',
+      alignItems: 'center',
+  },
+  submitButtonContainer: {
+      marginTop: 25,
+      marginBottom: 30,
+  },
+  primaryButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginTop: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 15,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#5A31F4',
   },
-  resetFilterText: {
-    color: '#007AFF',
-    textDecorationLine: 'underline',
-    marginTop: 10,
-    fontSize: 16,
+  primaryButtonText: {
+    color: '#5A31F4',
+    fontSize: 17,
+    fontWeight: '600',
   },
+  buttonDisabled: {
+      backgroundColor: '#E0E0E0',
+      borderColor: '#BDBDBD',
+  },
+  locationModalContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
+  locationModal: { width: '90%', maxWidth: 500, backgroundColor: '#FFFFFF', borderRadius: 12, padding: 20, alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
+  locationModalTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 20, color: '#2D1B5A' },
+  map: { width: '100%', height: 250, marginBottom: 15, borderRadius: 8 },
+  sliderContainer: { width: '100%', alignItems: 'stretch', marginVertical: 10 },
+  sliderLabel: { fontSize: 16, marginBottom: 8, color: '#4A5568', textAlign: 'center' },
+  slider: { width: '100%', height: 40 },
+  modalButtonRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#EAEAEA' },
+  modalButton: {
+     backgroundColor: '#EFE3FF', paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+  modalButtonText: { color: '#5A31F4', fontWeight: '600', fontSize: 16 }
 });
+

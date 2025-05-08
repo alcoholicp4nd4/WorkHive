@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, Button, Alert, TouchableOpacity, SafeAreaView, Platform, StatusBar } from 'react-native';
+import { View, Text, FlatList, StyleSheet, Alert, TouchableOpacity, SafeAreaView, Platform, StatusBar, Image, Dimensions } from 'react-native';
 import { collection, query, where, onSnapshot, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
 import { useNavigation } from '@react-navigation/native';
 import { ArrowLeft } from 'lucide-react-native';
+
+const { width } = Dimensions.get('window');
 
 export default function MyBookingsScreen() {
   const [bookings, setBookings] = useState([]);
@@ -37,6 +39,7 @@ export default function MyBookingsScreen() {
   };
 
   useEffect(() => {
+    if (!userId) return;
     const q = query(collection(db, 'bookings'), where('userId', '==', userId));
     const unsubscribe = onSnapshot(q, snapshot => {
       const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -47,19 +50,24 @@ export default function MyBookingsScreen() {
 
   useEffect(() => {
     const fetchAllServiceDetails = async () => {
-      const serviceIds = bookings.map(booking => booking.serviceId);
+      const serviceIds = bookings.map(booking => booking.serviceId).filter(id => !!id);
       const uniqueServiceIds = [...new Set(serviceIds)];
 
-      const serviceDetails = {};
-      for (const serviceId of uniqueServiceIds) {
-        if (!services[serviceId]) {
-          const serviceDoc = await getDoc(doc(db, 'services', serviceId));
-          if (serviceDoc.exists()) {
-            serviceDetails[serviceId] = serviceDoc.data();
-          }
+      const serviceDetailsToFetch = uniqueServiceIds.filter(id => !services[id]);
+      if (serviceDetailsToFetch.length === 0) return;
+
+      const fetchedServiceDetails = {};
+      for (const serviceId of serviceDetailsToFetch) {
+        try {
+            const serviceDoc = await getDoc(doc(db, 'services', serviceId));
+            if (serviceDoc.exists()) {
+                fetchedServiceDetails[serviceId] = serviceDoc.data();
+            }
+        } catch (error) {
+            console.error(`Error fetching service ${serviceId}:`, error);
         }
       }
-      setServices(prevServices => ({ ...prevServices, ...serviceDetails }));
+      setServices(prevServices => ({ ...prevServices, ...fetchedServiceDetails }));
     };
 
     if (bookings.length > 0) {
@@ -91,18 +99,12 @@ export default function MyBookingsScreen() {
   };
 
   const formatCountdown = (createdAt) => {
-    if (!createdAt || typeof createdAt.toDate !== 'function') {
-      return 'Invalid Date';
-    }
+    if (!createdAt || typeof createdAt.toDate !== 'function') return 'Invalid Date';
     const now = new Date();
     const bookingDate = createdAt.toDate();
     const endTime = new Date(bookingDate.getTime() + 24 * 60 * 60 * 1000);
     const timeDifference = endTime - now;
-
-    if (timeDifference <= 0) {
-      return 'Expired';
-    }
-
+    if (timeDifference <= 0) return 'Expired';
     const hours = Math.floor(timeDifference / (1000 * 60 * 60));
     const minutes = Math.floor((timeDifference % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((timeDifference % (1000 * 60)) / 1000);
@@ -126,84 +128,133 @@ export default function MyBookingsScreen() {
     });
   };
 
-  const renderItem = ({ item }) => {
-    const service = services[item.serviceId];
+  const renderBookingItem = ({ item: booking }) => {
+    const service = services[booking.serviceId];
+
+    if (!service) {
+        // Optionally render a placeholder or loading state for the card
+        return (
+            <View style={styles.card}>
+                <View style={styles.cardContent}>
+                    <Text>Loading service details...</Text>
+                </View>
+            </View>
+        );
+    }
 
     return (
       <TouchableOpacity 
-        style={styles.bookingCard}
+        style={styles.card}
         onPress={() => navigation.navigate('BookingDetails', {
-          bookingId: item.id,
-          serviceId: item.serviceId,
-          providerId: item.providerId
+          bookingId: booking.id,
+          serviceId: booking.serviceId,
+          providerId: booking.providerId
         })}
       >
-        <View style={styles.bookingHeader}>
-          <Text style={styles.serviceName}>{service?.title || 'Loading...'}</Text>
-          <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-            <Text style={styles.statusText}>{item.status.toUpperCase()}</Text>
+        <FlatList
+          data={
+            service.images && service.images.length > 0
+              ? service.images
+              : ['https://via.placeholder.com/300']
+          }
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(uri, idx) => uri + idx.toString()}
+          renderItem={({ item: imageUri }) => (
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.cardImage}
+              resizeMode="cover"
+            />
+          )}
+        />
+        <View style={styles.cardContent}>
+          <View style={styles.bookingHeaderRow}>
+            <Text style={styles.cardTitle}>{service.title}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: getStatusColor(booking.status) }]}>
+                <Text style={styles.statusText}>{booking.status.toUpperCase()}</Text>
+            </View>
           </View>
-        </View>
-        
-        <View style={styles.bookingInfo}>
-          <Text style={styles.infoText}>Booked on: {formatDate(item.createdAt)}</Text>
-          <Text style={styles.infoText}>Price: ${service?.price || 'N/A'}</Text>
-          <Text style={styles.infoText}>Delivery Time: {service?.deliveryTime || 'N/A'}</Text>
-        </View>
-
-        {item.status === 'pending' && (
-          <View style={styles.bookingFooter}>
-            <Text style={styles.countdownText}>{formatCountdown(item.createdAt)}</Text>
-            <TouchableOpacity 
-              style={styles.cancelButton}
-              onPress={() => cancelBooking(item.id, item.createdAt)}
-            >
-              <Text style={styles.cancelButtonText}>Cancel</Text>
-            </TouchableOpacity>
+          <Text style={styles.cardUsername}>by {service.username}</Text>
+          <Text style={styles.cardCategory}>{service.category}</Text>
+          <View style={styles.cardBottomRow}>
+            <Text style={styles.cardPrice}>
+              {service.priceType === 'hourly' ? `${service.price} TND/hr` : `${service.price} TND`}
+            </Text>
+            <Text style={styles.cardDelivery}>{service.deliveryTime}</Text>
           </View>
-        )}
+          <View style={styles.divider} />
+          <Text style={styles.infoTextStrong}>Booked on: {formatDate(booking.createdAt)}</Text>
+          
+          {booking.status === 'pending' && (
+            <View style={styles.bookingFooter}>
+              <Text style={styles.countdownText}>{formatCountdown(booking.createdAt)}</Text>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => cancelBooking(booking.id, booking.createdAt)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <ArrowLeft size={24} color="#000" />
+          <ArrowLeft size={24} color="#2D1B5A" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>My Bookings</Text>
       </View>
-      <View style={styles.filterContainer}>
-        <TouchableOpacity 
-          style={[styles.filterBtn, sortBy === 'date' && styles.activeFilterBtn]}
-          onPress={() => {
-            setSortBy('date');
-            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-          }}
-        >
-          <Text>Sort by Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.filterBtn, sortBy === 'name' && styles.activeFilterBtn]}
-          onPress={() => {
-            setSortBy('name');
-            setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
-          }}
-        >
-          <Text>Sort by Provider {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}</Text>
-        </TouchableOpacity>
+      <View style={styles.mainContentWrapper}>
+        <View style={styles.filterContainer}>
+          <TouchableOpacity 
+            style={[styles.filterBtn, sortBy === 'date' && styles.activeFilterBtn]}
+            onPress={() => {
+              setSortBy('date');
+              setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+            }}
+          >
+            <Text style={[styles.filterBtnText, sortBy === 'date' && styles.activeFilterBtnText]}>
+              Date {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.filterBtn, sortBy === 'name' && styles.activeFilterBtn]}
+            onPress={() => {
+              setSortBy('name');
+              setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+            }}
+          >
+            <Text style={[styles.filterBtnText, sortBy === 'name' && styles.activeFilterBtnText]}>
+              Provider {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.contentArea}>
+          {bookings.length === 0 ? (
+            <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>You have no bookings yet.</Text>
+            </View>
+          ) : (
+            <FlatList
+                data={sortBookings()}
+                keyExtractor={item => item.id}
+                renderItem={renderBookingItem}
+                contentContainerStyle={styles.listContainer}
+            />
+          )}
+        </View>
       </View>
-      <FlatList
-        data={sortBookings()}
-        keyExtractor={item => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ padding: 20 }}
-      />
     </SafeAreaView>
   );
 }
@@ -212,86 +263,176 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F4EBFF',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#F4EBFF',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: '#E0E0E0',
   },
   backButton: {
     padding: 8,
-    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#2D1B5A',
+    marginLeft: 16,
+  },
+  mainContentWrapper: {
+    flex: 1,
+    backgroundColor: 'transparent',
   },
   filterContainer: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    padding: 10,
-    backgroundColor: '#F5F5F5',
+    justifyContent: 'space-around',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
   filterBtn: {
-    padding: 10,
-    marginHorizontal: 5,
-    backgroundColor: '#E0E0E0',
-    borderRadius: 5,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
   },
   activeFilterBtn: {
-    backgroundColor: '#B78BFA',
+    backgroundColor: '#5A31F4',
   },
-  bookingCard: {
+  filterBtnText: {
+    color: '#5A31F4',
+    fontWeight: '600',
+  },
+  activeFilterBtnText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  contentArea: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  listContainer: {
+    padding: 20,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  cardImage: {
+    width: width - 40,
+    height: 180,
+  },
+  cardContent: {
     padding: 15,
-    backgroundColor: '#FFF0FA',
-    borderRadius: 10,
-    marginBottom: 15,
   },
-  bookingHeader: {
+  bookingHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 4,
   },
-  serviceName: {
+  cardTitle: {
     fontSize: 18,
     fontWeight: 'bold',
+    color: '#333',
+    flexShrink: 1,
   },
   statusBadge: {
-    padding: 5,
-    borderRadius: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
   },
   statusText: {
-    fontSize: 12,
+    color: '#fff',
+    fontSize: 10,
     fontWeight: 'bold',
   },
-  bookingInfo: {
-    marginTop: 10,
+  cardUsername: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 6,
   },
-  infoText: {
-    fontSize: 14,
+  cardCategory: {
+    fontSize: 13,
+    color: '#B78BFA',
+    fontWeight: '600',
+    marginBottom: 10,
   },
-  bookingFooter: {
+  cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
+  },
+  cardPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  cardDelivery: {
+    fontSize: 13,
+    color: '#666',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#EAEAEA',
+    marginVertical: 8,
+  },
+  infoTextStrong: {
+      fontSize: 14,
+      color: '#333',
+      fontWeight: '500',
+      marginBottom: 8,
+  },
+  bookingFooter: {
     marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EAEAEA',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   countdownText: {
-    fontSize: 14,
+    fontSize: 13,
+    color: '#D32F2F',
+    fontWeight: '600',
   },
   cancelButton: {
-    padding: 10,
-    backgroundColor: '#FF0000',
-    borderRadius: 5,
+    backgroundColor: '#FFCDD2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
   },
   cancelButtonText: {
-    fontSize: 14,
+    color: '#D32F2F',
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    fontSize: 13,
   },
 });
