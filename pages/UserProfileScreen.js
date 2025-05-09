@@ -160,6 +160,8 @@ export default function UserProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.label}>Full Name</Text>
           <Text style={styles.value}>{user.fullName || '—'}</Text>
+          <Text style={styles.label}>Username</Text>
+          <Text style={styles.value}>{user.username || '—'}</Text>
           <Text style={styles.label}>Bio</Text>
           <Text style={styles.value}>{user.bio || '—'}</Text>
           <Text style={styles.label}>Phone</Text>

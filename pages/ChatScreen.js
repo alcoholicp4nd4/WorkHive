@@ -103,25 +103,8 @@ export default function ChatScreen({ route, navigation }) {
             ...doc.data(),
           }));
 
-          // Get the booking to add initial message
-          getDoc(doc(db, 'bookings', bookingId)).then(bookingDoc => {
-            const booking = bookingDoc.data();
-            if (booking?.message) {
-              const hasInitialMessage = messageList.some(msg => msg.isInitialMessage);
-              if (!hasInitialMessage) {
-                messageList.unshift({
-                  id: 'initial-message',
-                  bookingId,
-                  senderId: booking.userId,
-                  text: booking.message,
-                  createdAt: booking.createdAt,
-                  isInitialMessage: true
-        });
-      }
-            }
-            setMessages(messageList);
-            setLoading(false);
-          });
+          setMessages(messageList);
+          setLoading(false);
         });
 
         return unsubscribe;

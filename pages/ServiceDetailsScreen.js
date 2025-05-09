@@ -47,7 +47,7 @@ export default function ServiceDetailsScreen({ route, navigation }) {
   const handleConfirmBooking = async () => {
     try {
       const bookingsRef = collection(db, 'bookings');
-      const newBooking = await addDoc(bookingsRef, {
+      const newBookingRef = await addDoc(bookingsRef, {
         serviceId: service.id,
         providerId: service.userId,
         userId: currentUser.uid,
@@ -61,8 +61,21 @@ export default function ServiceDetailsScreen({ route, navigation }) {
         service.userId,
         'booking',
         `New booking request for "${service.title}"`,
-        newBooking.id
+        newBookingRef.id
       );
+
+      // If a message was provided, create a message in the messages collection for this booking
+      if (message && message.trim().length > 0) {
+        await addDoc(collection(db, 'messages'), {
+          bookingId: newBookingRef.id,
+          senderId: currentUser.uid,
+          receiverId: service.userId,
+          text: message.trim(),
+          createdAt: serverTimestamp(),
+          read: false,
+          isInitialMessage: true,
+        });
+      }
 
       setModalVisible(false);
       setMessage('');

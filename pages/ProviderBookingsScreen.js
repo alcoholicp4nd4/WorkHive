@@ -11,7 +11,9 @@ import {
   StatusBar,
   Image,
   Dimensions,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal,
+  TextInput
 } from 'react-native';
 import { collection, query, where, onSnapshot, updateDoc, doc, getDoc, getDocs } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
@@ -31,6 +33,9 @@ export default function ProviderBookingsScreen() {
   const auth = getAuth();
   const userId = auth.currentUser?.uid;
   const navigation = useNavigation();
+  const [rejectModalVisible, setRejectModalVisible] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectBookingId, setRejectBookingId] = useState(null);
   
 
   useEffect(() => {
@@ -187,15 +192,16 @@ export default function ProviderBookingsScreen() {
   };
 
   const handleReject = (bookingId) => {
-    Alert.prompt(
-      'Reject Booking',
-      'Please provide a reason for rejection (optional):',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Submit Rejection', onPress: (reason) => handleUpdateStatus(bookingId, 'rejected', reason || 'Provider rejected') },
-      ],
-      'plain-text'
-    );
+    setRejectBookingId(bookingId);
+    setRejectReason('');
+    setRejectModalVisible(true);
+  };
+
+  const handleSubmitRejection = () => {
+    handleUpdateStatus(rejectBookingId, 'rejected', rejectReason || 'Provider rejected');
+    setRejectModalVisible(false);
+    setRejectBookingId(null);
+    setRejectReason('');
   };
 
   const renderIndividualBookingItem = (booking) => {
@@ -322,6 +328,37 @@ export default function ProviderBookingsScreen() {
           />
         )}
       </View>
+
+      {/* Reject Modal */}
+      <Modal
+        visible={rejectModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setRejectModalVisible(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center' }}>
+          <View style={{ backgroundColor: '#fff', borderRadius: 12, padding: 24, width: '85%', maxWidth: 350 }}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10, color: '#2D1B5A' }}>Reject Booking</Text>
+            <Text style={{ fontSize: 15, color: '#444', marginBottom: 12 }}>Please provide a reason for rejection (optional):</Text>
+            <TextInput
+              style={{ borderWidth: 1, borderColor: '#E0E0E0', borderRadius: 8, padding: 10, fontSize: 15, marginBottom: 18 }}
+              placeholder="Reason for rejection..."
+              value={rejectReason}
+              onChangeText={setRejectReason}
+              multiline
+              numberOfLines={3}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10 }}>
+              <TouchableOpacity onPress={() => setRejectModalVisible(false)} style={{ paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#E0E0E0', marginRight: 6 }}>
+                <Text style={{ color: '#333', fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSubmitRejection} style={{ paddingVertical: 10, paddingHorizontal: 18, borderRadius: 8, backgroundColor: '#EF4444' }}>
+                <Text style={{ color: '#fff', fontWeight: '600' }}>Submit Rejection</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

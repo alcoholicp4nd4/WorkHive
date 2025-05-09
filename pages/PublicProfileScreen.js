@@ -152,6 +152,8 @@ export default function PublicProfileScreen() {
           <Text style={{ color: '#888', fontSize: 14 }}>Provider Rating</Text>
         </View>
         <View style={styles.section}>
+          <Text style={styles.label}>Username</Text>
+          <Text style={styles.value}>{user.username || '—'}</Text>
           <Text style={styles.label}>Bio</Text>
           <Text style={styles.value}>{user.bio || '—'}</Text>
           <Text style={styles.label}>Phone</Text>
