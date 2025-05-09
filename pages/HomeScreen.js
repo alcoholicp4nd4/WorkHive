@@ -203,7 +203,10 @@ export default function HomeScreen() {
   const renderCategory = ({ item }) => (
     <TouchableOpacity
       style={styles.categoryCard}
-      onPress={() => navigation.navigate('Search', { initialCategory: item.name })}
+      onPress={() => navigation.navigate('Category', { 
+        category: item.name,
+        subcategories: item.subcategories
+      })}
     >
       <Text style={styles.categoryName}>{item.name}</Text>
       <Text style={styles.subcategoryCount}>{categoryCounts[item.id] || 0} services</Text>
