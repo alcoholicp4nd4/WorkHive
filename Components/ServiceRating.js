@@ -63,6 +63,7 @@ const ServiceRating = ({ serviceId, onRatingSubmit, readOnly = false }) => {
   const handleRating = (selectedRating) => {
     if (readOnly) return;
     setTempRating(selectedRating);
+    setIsEditing(true);
   };
 
   const handleConfirmRating = async () => {
@@ -152,9 +153,15 @@ const ServiceRating = ({ serviceId, onRatingSubmit, readOnly = false }) => {
           </TouchableOpacity>
         ))}
       </View>
-      <Text style={styles.averageRating}>
-        Average Rating: {averageRating} ⭐
-      </Text>
+      {isEditing ? (
+        <Text style={styles.averageRating}>
+          Your rating: {tempRating} <Text style={{color: '#B78BFA'}}>★</Text>
+        </Text>
+      ) : (
+        <Text style={styles.averageRating}>
+          Average Rating: {averageRating} ⭐
+        </Text>
+      )}
       
       {userRating > 0 && !isEditing ? (
         <TouchableOpacity 
@@ -206,7 +213,7 @@ const styles = StyleSheet.create({
     fontSize: 30,
   },
   starFilled: {
-    color: '#FFD700',
+    color: '#B78BFA',
   },
   starEmpty: {
     color: '#D3D3D3',
@@ -218,7 +225,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   confirmButton: {
-    backgroundColor: '#5A31F4',
+    backgroundColor: '#B78BFA',
     padding: 12,
     borderRadius: 8,
     alignItems: 'center',
@@ -238,7 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   changeButtonText: {
-    color: '#5A31F4',
+    color: '#B78BFA',
     fontWeight: '600',
     fontSize: 16,
   },

@@ -142,7 +142,7 @@ export default function AccountScreen() {
             style={styles.outlineButton}
             onPress={() => navigation.navigate('UserProfileScreen')}
           >
-            <User size={18} color="#5A31F4" style={styles.buttonIcon}/>
+            <User size={18} color="#FFFFFF" style={styles.buttonIcon}/>
             <Text style={styles.outlineButtonText}>View Profile</Text>
           </TouchableOpacity>
 
@@ -150,7 +150,7 @@ export default function AccountScreen() {
             style={styles.outlineButton}
             onPress={() => navigation.navigate('AddServiceScreen')}
           >
-            <PlusCircle size={18} color="#5A31F4" style={styles.buttonIcon}/>
+            <PlusCircle size={18} color="#FFFFFF" style={styles.buttonIcon}/>
             <Text style={styles.outlineButtonText}>Add Service</Text>
           </TouchableOpacity>
         </View>
@@ -239,19 +239,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#B78BFA',
     borderWidth: 1.5,
     borderColor: '#B78BFA',
     paddingVertical: 14,
     borderRadius: 10,
   },
   outlineButtonText: {
-    color: '#5A31F4',
+    color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
   },
   buttonIcon: {
     marginRight: 8,
+    color: '#FFFFFF',
   },
   menuContainer: {
     paddingHorizontal: 20,

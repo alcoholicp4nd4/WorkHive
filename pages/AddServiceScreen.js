@@ -193,19 +193,23 @@ export default function AddServiceScreen() {
   // Validate that price is a valid number and delivery time is an integer.
   // Construct a combined deliveryTime string with unit.
   const handleSubmit = async () => {
+    console.log('handleSubmit called');
     if (!title || !description || !category || !price || !deliveryTimeValue) {
+      console.log('Validation failed: missing fields', { title, description, category, price, deliveryTimeValue });
       Alert.alert('Missing Fields', 'Please fill out all required fields.');
       return;
     }
     // Validate price: must be a valid number.
     const priceNumber = parseFloat(price);
     if (isNaN(priceNumber)) {
+      console.log('Validation failed: invalid price', price);
       Alert.alert('Invalid Price', 'Please enter a valid number for the price.');
       return;
     }
     // Validate delivery time value: must be an integer.
     const deliveryInt = parseInt(deliveryTimeValue, 10);
     if (isNaN(deliveryInt) || deliveryInt.toString() !== deliveryTimeValue.trim()) {
+      console.log('Validation failed: invalid delivery time', deliveryTimeValue);
       Alert.alert('Invalid Delivery Time', 'Please enter a valid integer for the delivery time.');
       return;
     }
@@ -214,10 +218,24 @@ export default function AddServiceScreen() {
 
     setLoading(true);
     try {
-      const imageUrls = await uploadImages();
+      console.log('Selected images:', images);
+      let imageUrls = [];
+      if (images.length > 0) {
+        console.log('Uploading images...');
+        imageUrls = await uploadImages();
+        console.log('Uploaded image URLs:', imageUrls);
+        if (imageUrls.length === 0) {
+          Alert.alert('Image Upload Failed', 'Could not upload any images. Please try again.');
+          setLoading(false);
+          return;
+        }
+        if (imageUrls.length < images.length) {
+          Alert.alert('Partial Image Upload', `Only ${imageUrls.length} out of ${images.length} images were uploaded successfully. The service will be created with the uploaded images.`);
+        }
+      }
       const user = await getCurrentUser();
       if (!user) throw new Error('User not authenticated.');
-      
+      console.log('User:', user);
       const serviceData = {
         title,
         description,
@@ -237,7 +255,9 @@ export default function AddServiceScreen() {
       if (radiusService) {
         serviceData.radius = radiusService;
       }
+      console.log('Adding service to Firestore:', serviceData);
       await addDoc(collection(db, 'services'), serviceData);
+      console.log('Service added successfully');
       Alert.alert('Success', 'Service added successfully!');
       // Reset all fields
       setTitle('');
@@ -368,7 +388,7 @@ export default function AddServiceScreen() {
             style={styles.secondaryButton} 
             onPress={() => setLocationModalVisible(true)}
           >
-            <MapPin size={18} color="#5A31F4" style={{marginRight: 8}}/>
+            <MapPin size={18} color="#fff" style={{marginRight: 8}}/>
             <Text style={styles.secondaryButtonText}>Set Location & Radius</Text>
           </TouchableOpacity>
           {locationService && (
@@ -379,7 +399,7 @@ export default function AddServiceScreen() {
 
           <Text style={styles.label}>Service Images (Optional, Max 5)</Text>
           <TouchableOpacity style={styles.secondaryButton} onPress={pickImages}>
-            <ImagePlus size={18} color="#5A31F4" style={{marginRight: 8}}/>
+            <ImagePlus size={18} color="#fff" style={{marginRight: 8}}/>
             <Text style={styles.secondaryButtonText}>Add Images</Text>
           </TouchableOpacity>
           
@@ -409,7 +429,7 @@ export default function AddServiceScreen() {
                 <ActivityIndicator color="#5A31F4" />
               ) : (
                 <>
-                  <Check size={20} color="#5A31F4" style={{marginRight: 8}}/>
+                  <Check size={20} color="#fff" style={{marginRight: 8}}/>
                   <Text style={styles.primaryButtonText}>Add Service</Text>
                 </>
               )}
@@ -606,32 +626,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     borderLeftWidth: 1,
     borderLeftColor: '#E2E8F0',
+    backgroundColor: '#fff',
   },
   unitOptionSelected: {
-    backgroundColor: '#EFE3FF',
+    backgroundColor: '#B78BFA',
   },
   unitOptionText: {
     fontSize: 15,
-    color: '#5A31F4',
+    color: '#B78BFA',
     fontWeight: '500',
   },
   unitOptionTextSelected: {
+    color: '#fff',
     fontWeight: '700',
   },
   secondaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1.5,
-    borderColor: '#B78BFA',
+    backgroundColor: '#B78BFA',
+    borderWidth: 0,
     paddingVertical: 12,
     borderRadius: 10,
     marginBottom: 10,
     marginTop: 5,
   },
   secondaryButtonText: {
-    color: '#5A31F4',
+    color: '#fff',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -675,14 +696,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#B78BFA',
     paddingVertical: 15,
     borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: '#5A31F4',
+    borderWidth: 0,
   },
   primaryButtonText: {
-    color: '#5A31F4',
+    color: '#fff',
     fontSize: 17,
     fontWeight: '600',
   },

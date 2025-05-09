@@ -316,18 +316,18 @@ const styles = StyleSheet.create({
   filterBtn: {
     paddingVertical: 8,
     paddingHorizontal: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#B78BFA',
     borderRadius: 20,
   },
   activeFilterBtn: {
-    backgroundColor: '#5A31F4',
+    backgroundColor: '#8A2BE2',
   },
   filterBtnText: {
-    color: '#5A31F4',
+    color: '#fff',
     fontWeight: '600',
   },
   activeFilterBtnText: {
-    color: '#FFFFFF',
+    color: '#fff',
     fontWeight: '600',
   },
   contentArea: {

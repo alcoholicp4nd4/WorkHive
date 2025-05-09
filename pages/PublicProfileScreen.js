@@ -16,7 +16,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { doc, getDoc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth } from 'firebase/auth';
 import { db } from '../database/firebaseConfig';
-import { ArrowLeft } from 'lucide-react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 
 export default function PublicProfileScreen() {
   const route = useRoute();
@@ -28,6 +29,8 @@ export default function PublicProfileScreen() {
   const [user, setUser] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [avgRating, setAvgRating] = useState('N/A');
+  const [serviceRatings, setServiceRatings] = useState({});
 
   useEffect(() => {
     (async () => {
@@ -36,14 +39,43 @@ export default function PublicProfileScreen() {
         if (userSnap.exists()) {
           const userData = userSnap.data();
           setUser(userData);
-
           const q = query(collection(db, 'services'), where('userId', '==', userId));
           const snap = await getDocs(q);
           const fetchedServices = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
           setServices(fetchedServices);
+          // Fetch ratings for these services (for provider avg and per-service avg)
+          const serviceIds = fetchedServices.map(s => s.id);
+          let allRatings = [];
+          if (serviceIds.length > 0) {
+            for (let i = 0; i < serviceIds.length; i += 10) {
+              const batchIds = serviceIds.slice(i, i + 10);
+              const batchQuery = query(collection(db, 'ratings'), where('serviceId', 'in', batchIds));
+              const ratingsSnap = await getDocs(batchQuery);
+              allRatings = allRatings.concat(ratingsSnap.docs.map(doc => doc.data()));
+            }
+            // Provider avg
+            const ratingValues = allRatings.map(r => parseFloat(r.rating)).filter(r => !isNaN(r));
+            if (ratingValues.length > 0) {
+              setAvgRating((ratingValues.reduce((sum, r) => sum + r, 0) / ratingValues.length).toFixed(1));
+            } else {
+              setAvgRating('N/A');
+            }
+            // Per-service avg
+            const ratingsByService = {};
+            serviceIds.forEach(id => {
+              const ratings = allRatings.filter(r => r.serviceId === id).map(r => parseFloat(r.rating)).filter(r => !isNaN(r));
+              ratingsByService[id] = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1) : 'N/A';
+            });
+            setServiceRatings(ratingsByService);
+          } else {
+            setAvgRating('N/A');
+            setServiceRatings({});
+          }
         }
       } catch (err) {
         console.error('❌ Error loading public profile:', err);
+        setAvgRating('N/A');
+        setServiceRatings({});
       } finally {
         setLoading(false);
       }
@@ -97,13 +129,13 @@ export default function PublicProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#F4EBFF" />
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => navigation.goBack()}
         >
-          <ArrowLeft size={24} color="#000" />
+          <MaterialIcons name="arrow-back" size={24} color="#5A31F4" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Provider Profile</Text>
       </View>
@@ -112,33 +144,54 @@ export default function PublicProfileScreen() {
           source={user.profileImage ? { uri: user.profileImage } : require('../assets/Avatar_placeholder.png')}
           style={styles.avatar}
         />
-
+        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Icon name="star" size={20} color="#C4B5FD" />
+            <Text style={{ marginLeft: 6, color: '#374151', fontWeight: '600', fontSize: 16 }}>{avgRating}</Text>
+          </View>
+          <Text style={{ color: '#888', fontSize: 14 }}>Provider Rating</Text>
+        </View>
         <View style={styles.section}>
           <Text style={styles.label}>Bio</Text>
           <Text style={styles.value}>{user.bio || '—'}</Text>
-
           <Text style={styles.label}>Phone</Text>
           <Text style={styles.value}>{user.phone || '—'}</Text>
         </View>
-
         <Text style={styles.subheading}>Services Offered</Text>
         {services.length > 0 ? (
-          services.map((service, index) => (
-            <View key={index} style={styles.serviceCard}>
-              {service.images && service.images.length > 0 && (
-                <Image source={{ uri: service.images[0] }} style={styles.serviceImage} />
-              )}
-              <View style={{ flex: 1 }}>
-                <Text style={styles.serviceTitle}>{service.title}</Text>
-                <Text style={styles.serviceDesc}>{service.description}</Text>
-                <Text style={styles.serviceInfo}>Price: ${service.price}</Text>
-                <Text style={styles.serviceInfo}>Delivery: {service.deliveryTime} days</Text>
-              </View>
-              <TouchableOpacity style={styles.bookBtn} onPress={() => handleBookService(service)}>
-                <Text style={styles.bookText}>📦 Book Service</Text>
+          <View style={styles.serviceList}>
+            {services.map((service, index) => (
+              <TouchableOpacity
+                key={index}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('ServiceDetails', { service })}
+                style={{ marginBottom: 20 }}
+              >
+                <View style={styles.serviceCard}>
+                  {service.images && service.images.length > 0 && (
+                    <Image source={{ uri: service.images[0] }} style={styles.serviceImage} />
+                  )}
+                  <View style={styles.serviceCardContent}>
+                    <Text style={styles.serviceTitle}>{service.title}</Text>
+                    <Text style={styles.serviceCategory}>{service.category}</Text>
+                    <Text style={styles.serviceProvider}>by {user.username}</Text>
+                    <View style={styles.serviceCardRow}>
+                      <Text style={styles.servicePrice}>{service.priceType === 'hourly' ? `${service.price} TND/hr` : `${service.price} TND`}</Text>
+                      <Text style={styles.serviceDelivery}>{service.deliveryTime}</Text>
+                    </View>
+                    <View style={styles.serviceRatingRow}>
+                      <Icon name="star" size={16} color="#C4B5FD" />
+                      <Text style={styles.serviceRatingText}>{serviceRatings[service.id] || 'N/A'}</Text>
+                    </View>
+                    <Text style={styles.serviceDesc}>{service.description}</Text>
+                    <TouchableOpacity style={styles.bookBtn} onPress={() => handleBookService(service)}>
+                      <Text style={styles.bookText}>📦 Book Service</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </TouchableOpacity>
-            </View>
-          ))
+            ))}
+          </View>
         ) : (
           <Text style={styles.value}>No services available.</Text>
         )}
@@ -151,13 +204,12 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F4EBFF',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
-    backgroundColor: '#F4EBFF',
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
   },
@@ -166,90 +218,150 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: 'bold',
     color: '#2D1B5A',
   },
   container: {
     padding: 20,
     backgroundColor: '#F4EBFF',
+    paddingBottom: 40,
   },
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     backgroundColor: '#eee',
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   section: {
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 8,
     elevation: 2,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginTop: 10,
-    color: '#333',
+    marginTop: 12,
+    color: '#4B5563',
+    marginBottom: 4,
   },
   value: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 12,
   },
   subheading: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 12,
     color: '#2D1B5A',
+    marginTop: 8,
+  },
+  serviceList: {
+    marginTop: 0,
+    marginBottom: 24,
   },
   serviceCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
     backgroundColor: '#fff',
-    padding: 12,
-    marginBottom: 12,
-    borderRadius: 12,
-    gap: 12,
-    shadowColor: '#000',
+    borderRadius: 16,
+    marginBottom: 20,
+    overflow: 'hidden',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
   serviceImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
+    width: '100%',
+    height: 180,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    backgroundColor: '#eee',
+  },
+  serviceCardContent: {
+    padding: 20,
   },
   serviceTitle: {
-    fontSize: 16,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2D1B5A',
+    marginBottom: 6,
+  },
+  serviceCategory: {
+    fontSize: 15,
+    color: '#B78BFA',
     fontWeight: '600',
-    color: '#333',
-    marginBottom: 4,
+    marginBottom: 8,
+  },
+  serviceProvider: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 10,
+  },
+  serviceCardRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  servicePrice: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#2D1B5A',
+  },
+  serviceDelivery: {
+    fontSize: 14,
+    color: '#6B7280',
   },
   serviceDesc: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 4,
+    fontSize: 15,
+    color: '#444',
+    marginBottom: 12,
   },
-  serviceInfo: {
-    fontSize: 12,
-    color: '#888',
+  serviceRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  serviceRatingText: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginLeft: 6,
   },
   bookBtn: {
-    backgroundColor: '#5A31F4',
-    padding: 8,
-    borderRadius: 8,
+    backgroundColor: '#B78BFA',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 12,
     alignItems: 'center',
+    marginTop: 16,
+    alignSelf: 'flex-end',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   bookText: {
     color: '#fff',
-    fontSize: 12,
+    fontSize: 16,
     fontWeight: '600',
   },
   error: {

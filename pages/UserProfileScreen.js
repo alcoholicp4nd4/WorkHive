@@ -10,7 +10,9 @@ import {
   Linking,
   SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
+  Modal,
+  Dimensions
 } from 'react-native';
 import { getCurrentUser } from '../database/authDatabase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -23,6 +25,9 @@ export default function UserProfileScreen() {
   const [user, setUser] = useState(null);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [avgRating, setAvgRating] = useState('N/A');
+  const [serviceRatings, setServiceRatings] = useState({});
   const navigation = useNavigation();
 
   useEffect(() => {
@@ -36,8 +41,38 @@ export default function UserProfileScreen() {
         const snap = await getDocs(q);
         const userServices = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         setServices(userServices);
+        // Fetch ratings for these services (for provider avg and per-service avg)
+        const serviceIds = userServices.map(s => s.id);
+        let allRatings = [];
+        if (serviceIds.length > 0) {
+          for (let i = 0; i < serviceIds.length; i += 10) {
+            const batchIds = serviceIds.slice(i, i + 10);
+            const batchQuery = query(collection(db, 'ratings'), where('serviceId', 'in', batchIds));
+            const ratingsSnap = await getDocs(batchQuery);
+            allRatings = allRatings.concat(ratingsSnap.docs.map(doc => doc.data()));
+          }
+          // Provider avg
+          const ratingValues = allRatings.map(r => parseFloat(r.rating)).filter(r => !isNaN(r));
+          if (ratingValues.length > 0) {
+            setAvgRating((ratingValues.reduce((sum, r) => sum + r, 0) / ratingValues.length).toFixed(1));
+          } else {
+            setAvgRating('N/A');
+          }
+          // Per-service avg
+          const ratingsByService = {};
+          serviceIds.forEach(id => {
+            const ratings = allRatings.filter(r => r.serviceId === id).map(r => parseFloat(r.rating)).filter(r => !isNaN(r));
+            ratingsByService[id] = ratings.length > 0 ? (ratings.reduce((sum, r) => sum + r, 0) / ratings.length).toFixed(1) : 'N/A';
+          });
+          setServiceRatings(ratingsByService);
+        } else {
+          setAvgRating('N/A');
+          setServiceRatings({});
+        }
       } catch (err) {
-        console.error("❌ Error loading services:", err);
+        console.error("❌ Error loading services or ratings:", err);
+        setAvgRating('N/A');
+        setServiceRatings({});
       } finally {
         setLoading(false);
       }
@@ -74,10 +109,31 @@ export default function UserProfileScreen() {
         </View>
         <View style={styles.serviceRatingRow}>
           <Icon name="star" size={16} color="#C4B5FD" />
-          <Text style={styles.serviceRatingText}>{getDisplayRating(service)}</Text>
+          <Text style={styles.serviceRatingText}>{serviceRatings[service.id] || 'N/A'}</Text>
         </View>
+        <Text style={styles.serviceDesc}>{service.description}</Text>
       </View>
     </TouchableOpacity>
+  );
+
+  const renderImagePreview = () => (
+    <Modal
+      visible={!!selectedImage}
+      transparent={true}
+      onRequestClose={() => setSelectedImage(null)}
+    >
+      <TouchableOpacity 
+        style={styles.modalContainer}
+        activeOpacity={1}
+        onPress={() => setSelectedImage(null)}
+      >
+        <Image
+          source={{ uri: selectedImage }}
+          style={styles.modalImage}
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
+    </Modal>
   );
 
   return (
@@ -94,6 +150,13 @@ export default function UserProfileScreen() {
           source={user.profileImage ? { uri: user.profileImage } : require('../assets/Avatar_placeholder.png')}
           style={styles.avatar}
         />
+        <View style={{ alignItems: 'center', marginBottom: 16 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
+            <Icon name="star" size={20} color="#C4B5FD" />
+            <Text style={{ marginLeft: 6, color: '#374151', fontWeight: '600', fontSize: 16 }}>{avgRating}</Text>
+          </View>
+          <Text style={{ color: '#888', fontSize: 14 }}>Provider Rating</Text>
+        </View>
         <View style={styles.section}>
           <Text style={styles.label}>Full Name</Text>
           <Text style={styles.value}>{user.fullName || '—'}</Text>
@@ -114,11 +177,24 @@ export default function UserProfileScreen() {
           )) : <Text style={styles.noText}>No document files</Text>}
         </View>
         <Text style={styles.subheading}>Images</Text>
-        <View style={styles.imageGrid}>
-          {imageDocs.length > 0 ? imageDocs.map((img, index) => (
-            <Image key={index} source={{ uri: img.url }} style={styles.docImage} />
-          )) : <Text style={styles.noText}>No image files</Text>}
+        <View style={styles.imagesSection}>
+          {imageDocs.length > 0 ? (
+            <View style={styles.imageGrid}>
+              {imageDocs.map((img, index) => (
+                <TouchableOpacity 
+                  key={index} 
+                  onPress={() => setSelectedImage(img.url)}
+                  style={styles.imageContainer}
+                >
+                  <Image source={{ uri: img.url }} style={styles.docImage} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <Text style={styles.noText}>No image files</Text>
+          )}
         </View>
+        {renderImagePreview()}
         <View style={styles.divider} />
         <Text style={styles.sectionTitle}>Your Services</Text>
         {loading ? (
@@ -141,11 +217,14 @@ export default function UserProfileScreen() {
   );
 }
 
+const { width, height } = Dimensions.get('window');
+const imageSize = (width - 44) / 2; // 44 = container padding (16) * 2 + gap between images (12)
+
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#F4EBFF',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight,
+    paddingTop: 0,
   },
   header: {
     flexDirection: 'row',
@@ -154,7 +233,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E5E7EB',
-    marginBottom: 0,
+    marginTop: 0,
   },
   backButton: {
     padding: 8,
@@ -164,9 +243,6 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#2D1B5A',
-    flex: 1,
-    textAlign: 'center',
-    marginRight: 32, // To center title with back button
   },
   container: {
     padding: 20,
@@ -178,91 +254,122 @@ const styles = StyleSheet.create({
     height: 120,
     borderRadius: 60,
     alignSelf: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     backgroundColor: '#eee',
     borderWidth: 4,
     borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   section: {
     backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
+    marginBottom: 24,
     shadowColor: '#000',
     shadowOpacity: 0.05,
-    shadowRadius: 5,
+    shadowRadius: 8,
     elevation: 2,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginTop: 10,
-    color: '#333',
+    marginTop: 12,
+    color: '#4B5563',
+    marginBottom: 4,
   },
   value: {
-    fontSize: 14,
-    color: '#555',
+    fontSize: 16,
+    color: '#1F2937',
+    marginBottom: 12,
   },
   subheading: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 10,
+    marginBottom: 12,
     color: '#2D1B5A',
+    marginTop: 8,
   },
   docsGrid: {
-    marginBottom: 12,
+    marginBottom: 16,
   },
   docItem: {
     backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowRadius: 5,
     elevation: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   docText: {
-    color: '#444',
-    fontSize: 14,
-    marginBottom: 4,
+    color: '#374151',
+    fontSize: 15,
+    marginBottom: 6,
   },
   download: {
-    color: '#5A31F4',
-    fontWeight: 'bold',
+    color: '#B78BFA',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  imagesSection: {
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   imageGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  imageContainer: {
+    width: '48%',
+    paddingBottom: '48%', // This creates a square aspect ratio
+    position: 'relative',
     marginBottom: 12,
   },
   docImage: {
-    width: 100,
-    height: 100,
-    borderRadius: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
   },
   noText: {
-    color: '#777',
-    marginBottom: 10,
+    color: '#6B7280',
+    marginBottom: 12,
+    fontSize: 15,
   },
   divider: {
     height: 1,
     backgroundColor: '#E2E8F0',
-    marginVertical: 18,
+    marginVertical: 24,
     borderRadius: 1,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#5A31F4',
-    marginBottom: 16,
+    color: '#2D1B5A',
+    marginBottom: 20,
   },
   serviceList: {
     marginTop: 0,
-    marginBottom: 20,
+    marginBottom: 24,
   },
   serviceCard: {
     backgroundColor: '#fff',
@@ -279,77 +386,96 @@ const styles = StyleSheet.create({
   },
   serviceImage: {
     width: '100%',
-    height: 160,
+    height: 180,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     backgroundColor: '#eee',
   },
   serviceCardContent: {
-    padding: 16,
+    padding: 20,
   },
   serviceTitle: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#2D1B5A',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   serviceCategory: {
-    fontSize: 14,
+    fontSize: 15,
     color: '#B78BFA',
     fontWeight: '600',
     marginBottom: 8,
   },
   serviceProvider: {
-    fontSize: 13,
-    color: '#666',
-    marginBottom: 8,
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 10,
   },
   serviceCardRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   servicePrice: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '600',
     color: '#2D1B5A',
   },
   serviceDelivery: {
-    fontSize: 13,
-    color: '#666',
+    fontSize: 14,
+    color: '#6B7280',
   },
   serviceRatingRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 4,
   },
   serviceRatingText: {
-    marginLeft: 4,
-    color: '#333',
+    marginLeft: 6,
+    color: '#374151',
     fontWeight: '500',
-    fontSize: 14,
+    fontSize: 15,
+  },
+  serviceDesc: {
+    marginTop: 10,
+    color: '#6B7280',
+    fontSize: 15,
   },
   editButton: {
-    backgroundColor: '#5A31F4',
-    paddingVertical: 14,
+    backgroundColor: '#B78BFA',
+    paddingVertical: 16,
     paddingHorizontal: 20,
-    borderRadius: 10,
+    borderRadius: 12,
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 32,
     marginBottom: 50,
     alignSelf: 'center',
     width: '100%',
-    elevation: 2,
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   editButtonText: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
   error: {
     padding: 20,
     color: 'red',
     fontSize: 16,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: width,
+    height: height * 0.8,
   },
 });

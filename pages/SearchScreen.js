@@ -20,6 +20,7 @@ import { db } from '../database/firebaseConfig';
 import MapView, { Marker, Circle } from 'react-native-maps';
 import Slider from '@react-native-community/slider';
 import Icon from 'react-native-vector-icons/MaterialIcons';
+import { useIsFocused } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -125,26 +126,30 @@ export default function SearchScreen({ navigation, route }) {
   const [filterDeliveryMax, setFilterDeliveryMax] = useState('');
   const [filterDeliveryUnit, setFilterDeliveryUnit] = useState('days'); // 'days' or 'months'
 
+  const isFocused = useIsFocused();
+
   // Fetch services and ratings from Firestore
   useEffect(() => {
-    const fetchData = async () => {
-      const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
-      const ratingsRef = collection(db, 'ratings');
-      const [servicesSnapshot, ratingsSnapshot] = await Promise.all([
-        getDocs(q),
-        getDocs(ratingsRef),
-      ]);
-      const fetchedServices = servicesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      const fetchedRatings = ratingsSnapshot.docs.map(doc => doc.data());
-      setServices(fetchedServices);
-      setRatings(fetchedRatings);
-      setLoading(false);
-    };
-    fetchData();
-  }, []);
+    if (isFocused) {
+      const fetchData = async () => {
+        const q = query(collection(db, 'services'), orderBy('createdAt', 'desc'));
+        const ratingsRef = collection(db, 'ratings');
+        const [servicesSnapshot, ratingsSnapshot] = await Promise.all([
+          getDocs(q),
+          getDocs(ratingsRef),
+        ]);
+        const fetchedServices = servicesSnapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        const fetchedRatings = ratingsSnapshot.docs.map(doc => doc.data());
+        setServices(fetchedServices);
+        setRatings(fetchedRatings);
+        setLoading(false);
+      };
+      fetchData();
+    }
+  }, [isFocused]);
 
   // Get user's current location (for the Nearby filter)
   useEffect(() => {
@@ -373,91 +378,9 @@ export default function SearchScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View style={styles.searchRow}>
-            <Search size={20} color="#666" />
-            <TextInput
-              placeholder="Search services..."
-              style={styles.input}
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              placeholderTextColor="#666"
-            />
-            {searchQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchQuery('')}>
-                <X size={18} color="#666" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-        <View style={styles.filterRow}>
-          <View style={styles.filterButtonGroup}>
-            <TouchableOpacity
-              style={[styles.filterBtn, (filterModalVisible || additionalFiltersActive) && styles.filterBtnActive]}
-              onPress={() => setFilterModalVisible(true)}
-            >
-              <SlidersHorizontal size={18} color={(filterModalVisible || additionalFiltersActive) ? '#fff' : '#B78BFA'} />
-              <Text style={[styles.filterText, (filterModalVisible || additionalFiltersActive) && styles.filterTextActive]}>
-                Filters
-              </Text>
-            </TouchableOpacity>
-            {additionalFiltersActive && (
-              <TouchableOpacity
-                style={styles.clearFilterButton}
-                onPress={resetAdditionalFilters}
-              >
-                <X size={18} color={'#B78BFA'} />
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={styles.filterButtonGroup}>
-            <TouchableOpacity
-              style={[styles.filterBtn, filterNearby && styles.filterBtnActive]}
-              onPress={() => {
-                setNearbyModalVisible(true);
-                if (location) {
-                  setModalLocation(location);
-                  setModalMapRegion({
-                    latitude: location.latitude,
-                    longitude: location.longitude,
-                    latitudeDelta: 0.05,
-                    longitudeDelta: 0.05,
-                  });
-                  setModalRadius(radius);
-                }
-              }}
-            >
-              <MapPin size={18} color={filterNearby ? '#fff' : '#B78BFA'} />
-              <Text style={[styles.filterText, filterNearby && styles.filterTextActive]}>
-                Nearby
-              </Text>
-            </TouchableOpacity>
-            {filterNearby && (
-              <TouchableOpacity
-                style={styles.clearFilterButton}
-                onPress={resetNearbyFilter}
-              >
-                <X size={18} color={'#B78BFA'} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      </View>
-
-      {/* Service List */}
       {loading ? (
         <View style={styles.loading}>
           <ActivityIndicator size="large" color="#B78BFA" />
-        </View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Text style={styles.emptyStateTitle}>No Services Found</Text>
-          <Text style={styles.emptyStateText}>
-            Try adjusting your filters or search terms
-          </Text>
         </View>
       ) : (
         <FlatList
@@ -466,6 +389,91 @@ export default function SearchScreen({ navigation, route }) {
           contentContainerStyle={styles.list}
           renderItem={renderServiceItem}
           showsVerticalScrollIndicator={false}
+          ListHeaderComponent={() => (
+            <>
+              {/* Header */}
+              <View style={styles.header}>
+                <View style={styles.headerTop}>
+                  <View style={styles.searchRow}>
+                    <Search size={20} color="#666" />
+                    <TextInput
+                      placeholder="Search services..."
+                      style={styles.input}
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                      placeholderTextColor="#666"
+                    />
+                    {searchQuery.length > 0 && (
+                      <TouchableOpacity onPress={() => setSearchQuery('')}>
+                        <X size={18} color="#666" />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.filterRow}>
+                  <View style={styles.filterButtonGroup}>
+                    <TouchableOpacity
+                      style={[styles.filterBtn, (filterModalVisible || additionalFiltersActive) && styles.filterBtnActive]}
+                      onPress={() => setFilterModalVisible(true)}
+                    >
+                      <SlidersHorizontal size={18} color={'#fff'} />
+                      <Text style={[styles.filterText, (filterModalVisible || additionalFiltersActive) && styles.filterTextActive]}>
+                        Filters
+                      </Text>
+                    </TouchableOpacity>
+                    {additionalFiltersActive && (
+                      <TouchableOpacity
+                        style={styles.clearFilterButton}
+                        onPress={resetAdditionalFilters}
+                      >
+                        <X size={18} color={'#B78BFA'} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={styles.filterButtonGroup}>
+                    <TouchableOpacity
+                      style={[styles.filterBtn, filterNearby && styles.filterBtnActive, { marginLeft: 12 }]}
+                      onPress={() => {
+                        setNearbyModalVisible(true);
+                        if (location) {
+                          setModalLocation(location);
+                          setModalMapRegion({
+                            latitude: location.latitude,
+                            longitude: location.longitude,
+                            latitudeDelta: 0.05,
+                            longitudeDelta: 0.05,
+                          });
+                          setModalRadius(radius);
+                        }
+                      }}
+                    >
+                      <MapPin size={18} color={'#fff'} />
+                      <Text style={[styles.filterText, filterNearby && styles.filterTextActive]}>
+                        Nearby
+                      </Text>
+                    </TouchableOpacity>
+                    {filterNearby && (
+                      <TouchableOpacity
+                        style={styles.clearFilterButton}
+                        onPress={resetNearbyFilter}
+                      >
+                        <X size={18} color={'#B78BFA'} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+              </View>
+              {filtered.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateTitle}>No Services Found</Text>
+                  <Text style={styles.emptyStateText}>
+                    Try adjusting your filters or search terms
+                  </Text>
+                </View>
+              )}
+            </>
+          )}
         />
       )}
 
@@ -722,18 +730,20 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F3FF',
   },
   header: {
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 15,
-    paddingHorizontal: 20,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#F5F3FF',
+    width: '100%',
+    marginBottom: 20,
+    alignItems: 'center',
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    justifyContent: 'center',
   },
   searchRow: {
-    flex: 1,
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -745,6 +755,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 2,
+    width: '85%',
+    maxWidth: 400,
   },
   input: {
     flex: 1,
@@ -770,14 +782,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#B78BFA',
   },
   filterBtnActive: {
     backgroundColor: '#8A2BE2',
+    borderColor: '#8A2BE2',
   },
   filterText: {
     fontSize: 14,
-    color: '#8A2BE2',
+    color: '#fff',
     marginLeft: 6,
     fontWeight: '600',
   },
@@ -807,7 +820,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   list: {
-    padding: 20,
+    paddingHorizontal: 0,
   },
   card: {
     backgroundColor: '#fff',
@@ -821,6 +834,7 @@ const styles = StyleSheet.create({
     elevation: 4,
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    marginHorizontal: 20,
   },
   cardImage: {
     width: width - 40,

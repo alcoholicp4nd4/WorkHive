@@ -24,6 +24,7 @@ import {
   uploadDocument,
   updateUserProfile,
 } from '../database/authDatabase';
+import { MaterialIcons } from '@expo/vector-icons';
 
 export default function ProfileSetupScreen() {
   const navigation = useNavigation();
@@ -112,13 +113,20 @@ export default function ProfileSetupScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={styles.wrapper}
+      style={styles.safeArea}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
-          <Text style={styles.heading}>Set Up Your Profile</Text>
+          {/* Header Bar */}
+          <View style={styles.header}>
+            <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+              <MaterialIcons name="arrow-back" size={24} color="#5A31F4" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Profile Setup</Text>
+          </View>
 
+          {/* Avatar */}
           <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} disabled={loading}>
             <Image
               source={
@@ -131,53 +139,57 @@ export default function ProfileSetupScreen() {
             <Text style={styles.avatarText}>Tap to change photo</Text>
           </TouchableOpacity>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="e.g. Jane Doe"
-              placeholderTextColor="#aaa"
-            />
+          {/* Card for Inputs */}
+          <View style={styles.card}>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Full Name</Text>
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="e.g. Jane Doe"
+                placeholderTextColor="#aaa"
+              />
+            </View>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Bio</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                value={bio}
+                onChangeText={setBio}
+                placeholder="Tell us about yourself"
+                placeholderTextColor="#aaa"
+                multiline
+              />
+            </View>
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Phone</Text>
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="e.g. +1 555 1234"
+                placeholderTextColor="#aaa"
+                keyboardType="phone-pad"
+              />
+            </View>
           </View>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Bio</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell us about yourself"
-              placeholderTextColor="#aaa"
-              multiline
-            />
+          {/* Documents Section */}
+          <Text style={styles.subheading}>Documents / Certificates</Text>
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.outlineButton} onPress={pickDocument} disabled={loading}>
+              <Text style={styles.outlineButtonText}>Add File</Text>
+            </TouchableOpacity>
+            {uploads.length > 0 ? uploads.map((doc, i) => (
+              <View key={i} style={styles.docItem}>
+                <Text style={styles.docText}>{doc.name}</Text>
+              </View>
+            )) : <Text style={styles.noText}>No documents uploaded</Text>}
           </View>
-
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Phone</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="e.g. +1 555 1234"
-              placeholderTextColor="#aaa"
-              keyboardType="phone-pad"
-            />
-          </View>
-
-          <View style={styles.divider} />
-
-          <Text style={styles.label}>Documents / Certificates</Text>
-          <TouchableOpacity style={styles.outlineButton} onPress={pickDocument} disabled={loading}>
-            <Text style={styles.outlineButtonText}>Add File</Text>
-          </TouchableOpacity>
-          {uploads.map((doc, i) => (
-            <Text key={i} style={styles.docItem}>• {doc.name}</Text>
-          ))}
 
           {loading ? (
-            <ActivityIndicator color="#C89BFF" size="large" style={{ marginTop: 30 }} />
+            <ActivityIndicator color="#B78BFA" size="large" style={{ marginTop: 30 }} />
           ) : (
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
               <Text style={styles.saveButtonText}>Save Profile</Text>
@@ -190,20 +202,32 @@ export default function ProfileSetupScreen() {
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
+  safeArea: {
     flex: 1,
-    backgroundColor: '#1B1129',
+    backgroundColor: '#F4EBFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    marginBottom: 10,
+  },
+  backButton: {
+    padding: 8,
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2D1B5A',
   },
   container: {
     padding: 20,
-    paddingBottom: 60,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#DAB4FF',
-    textAlign: 'center',
-    marginBottom: 20,
+    backgroundColor: '#F4EBFF',
+    paddingBottom: 40,
   },
   avatarContainer: {
     alignItems: 'center',
@@ -213,72 +237,116 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#333',
+    backgroundColor: '#fff',
     marginBottom: 8,
+    borderWidth: 4,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   avatarText: {
     color: '#AAA',
     fontSize: 14,
   },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   fieldGroup: {
     marginBottom: 16,
   },
   label: {
-    fontSize: 16,
-    color: '#DDD',
-    marginBottom: 6,
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 12,
+    color: '#4B5563',
+    marginBottom: 4,
   },
   input: {
-    backgroundColor: '#2C1D3B',
+    backgroundColor: '#fff',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
-    color: '#fff',
+    color: '#1F2937',
     borderWidth: 1,
-    borderColor: '#3F2C5C',
+    borderColor: '#E5E7EB',
   },
   textArea: {
     height: 100,
     textAlignVertical: 'top',
   },
-  divider: {
-    height: 1,
-    backgroundColor: '#3F2C5C',
-    marginVertical: 25,
+  subheading: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 12,
+    color: '#2D1B5A',
+    marginTop: 8,
+    marginLeft: 2,
   },
   outlineButton: {
     borderWidth: 1,
-    borderColor: '#C89BFF',
+    borderColor: '#B78BFA',
     borderRadius: 10,
     paddingVertical: 12,
     alignItems: 'center',
     marginBottom: 10,
+    backgroundColor: '#fff',
   },
   outlineButtonText: {
-    color: '#C89BFF',
+    color: '#B78BFA',
     fontSize: 16,
     fontWeight: '600',
   },
   docItem: {
-    fontSize: 14,
-    color: '#aaa',
-    marginTop: 4,
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  docText: {
+    color: '#374151',
+    fontSize: 15,
+    marginBottom: 2,
+  },
+  noText: {
+    color: '#6B7280',
+    marginBottom: 12,
+    fontSize: 15,
+    textAlign: 'center',
   },
   saveButton: {
-    backgroundColor: '#C89BFF',
-    borderRadius: 10,
+    backgroundColor: '#B78BFA',
+    borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
     marginTop: 30,
+    marginBottom: 50,
+    alignSelf: 'center',
+    width: '100%',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
     elevation: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
   },
   saveButtonText: {
-    color: '#1B1129',
+    color: '#fff',
     fontSize: 18,
     fontWeight: '700',
   },

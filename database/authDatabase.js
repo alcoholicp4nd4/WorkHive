@@ -162,11 +162,27 @@ export const uploadDocument = async (fileUri, uid, filename) => {
       body: form,
     });
 
-    const json = await res.json();
+    // First check if the response is ok
+    if (!res.ok) {
+      throw new Error(`Gofile upload failed with status: ${res.status}`);
+    }
+
+    // Try to parse the response as JSON
+    let json;
+    try {
+      const text = await res.text();
+      json = JSON.parse(text);
+    } catch (parseError) {
+      console.error("Failed to parse Gofile response:", parseError);
+      throw new Error("Invalid response from Gofile server");
+    }
+
+    // Check the response status
     if (json.status !== "ok") {
       throw new Error("Gofile upload failed: " + (json?.status || 'unknown status'));
     }
 
+    // Return the download URL
     return json.data.downloadPage || json.data.directLink;
   } catch (err) {
     console.error("❌ uploadDocument error:", err.message || err);

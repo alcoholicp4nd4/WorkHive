@@ -193,9 +193,6 @@ export default function ChatsScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Messages</Text>
-      </View>
       {renderRoleSelector()}
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -357,25 +354,43 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
+    borderRadius: 16,
+    marginHorizontal: 12,
+    marginTop: 16,
+    marginBottom: 8,
+    shadowColor: '#B78BFA',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   roleButton: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 12,
     paddingHorizontal: 16,
     marginHorizontal: 4,
     borderRadius: 20,
-    backgroundColor: '#F5F3FF',
+    backgroundColor: '#B78BFA',
     alignItems: 'center',
+    borderWidth: 0,
   },
   roleButtonActive: {
-    backgroundColor: '#5A31F4',
+    backgroundColor: '#8A2BE2',
+    shadowColor: '#8A2BE2',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
+    borderWidth: 2,
+    borderColor: '#8A2BE2',
   },
   roleButtonText: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#5A31F4',
+    color: '#fff',
   },
   roleButtonTextActive: {
     color: '#fff',
+    fontWeight: 'bold',
   },
 });

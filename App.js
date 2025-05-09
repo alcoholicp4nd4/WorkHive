@@ -79,7 +79,20 @@ function MainAppTabs() {
   }, []);
 
   return (
-    <Tab.Navigator>
+    <Tab.Navigator
+      screenOptions={{
+        tabBarActiveTintColor: '#B78BFA',
+        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarStyle: {
+          backgroundColor: '#fff',
+          borderTopWidth: 1,
+          borderTopColor: '#E5E7EB',
+          paddingBottom: 5,
+          paddingTop: 5,
+        },
+        headerShown: true,
+      }}
+    >
       <Tab.Screen 
         name="Home" 
         component={HomeScreen} 

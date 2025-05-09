@@ -135,6 +135,8 @@ export default function HomeScreen() {
   const [categoryCounts, setCategoryCounts] = useState({});
   const [searchText, setSearchText] = useState('');
   const [visibleCount, setVisibleCount] = useState(5);
+  const [topProviders, setTopProviders] = useState([]);
+  const [visibleProviderCount, setVisibleProviderCount] = useState(5);
 
   useEffect(() => {
     navigation.setOptions({ headerRight: () => <NotificationBell navigation={navigation} /> });
@@ -195,9 +197,46 @@ export default function HomeScreen() {
       setCurrentUser(user);
     };
 
+    // Fetch top providers
+    const fetchTopProviders = async () => {
+      try {
+        const servicesRef = collection(db, 'services');
+        const ratingsRef = collection(db, 'ratings');
+        const usersRef = collection(db, 'users');
+        const [servicesSnapshot, ratingsSnapshot, usersSnapshot] = await Promise.all([
+          getDocs(servicesRef),
+          getDocs(ratingsRef),
+          getDocs(usersRef),
+        ]);
+        const services = servicesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const ratings = ratingsSnapshot.docs.map(doc => doc.data());
+        const users = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Map userId to all their serviceIds
+        const userServiceMap = {};
+        services.forEach(svc => {
+          if (!userServiceMap[svc.userId]) userServiceMap[svc.userId] = [];
+          userServiceMap[svc.userId].push(svc.id);
+        });
+        // Calculate avg rating for each provider
+        const providerRatings = users.map(user => {
+          const serviceIds = userServiceMap[user.id] || [];
+          const userRatings = ratings.filter(r => serviceIds.includes(r.serviceId));
+          const ratingValues = userRatings.map(r => typeof r.rating === 'number' ? r.rating : parseFloat(r.rating)).filter(r => !isNaN(r));
+          const avg = ratingValues.length > 0 ? (ratingValues.reduce((sum, r) => sum + r, 0) / ratingValues.length) : null;
+          return { ...user, avgRating: avg };
+        });
+        // Sort by avgRating desc, filter out those with no rating
+        const sortedProviders = providerRatings.filter(p => p.avgRating !== null).sort((a, b) => b.avgRating - a.avgRating);
+        setTopProviders(sortedProviders.slice(0, 10));
+      } catch (err) {
+        console.error('❌ Error fetching top providers:', err);
+      }
+    };
+
     fetchTopServices();
     fetchCategoryCounts();
     fetchUser();
+    fetchTopProviders();
   }, []);
 
   const renderCategory = ({ item }) => (
@@ -209,7 +248,6 @@ export default function HomeScreen() {
       })}
     >
       <Text style={styles.categoryName}>{item.name}</Text>
-      <Text style={styles.subcategoryCount}>{categoryCounts[item.id] || 0} services</Text>
     </TouchableOpacity>
   );
 
@@ -274,6 +312,43 @@ export default function HomeScreen() {
             {topServices.slice(0, visibleCount).map(renderServiceCard)}
             {visibleCount < topServices.length && (
               <TouchableOpacity style={styles.loadMoreButton} onPress={() => setVisibleCount(v => v + 5)}>
+                <Text style={styles.loadMoreButtonText}>Load More</Text>
+              </TouchableOpacity>
+            )}
+          </>
+        )}
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Top Rated Providers</Text>
+        {topProviders.length === 0 ? (
+          <Text style={styles.emptyText}>No top rated providers found.</Text>
+        ) : (
+          <>
+            {topProviders.slice(0, visibleProviderCount).map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={styles.providerCard}
+                onPress={() => {
+                  if (currentUser && item.id === currentUser.uid) {
+                    navigation.navigate('UserProfileScreen');
+                  } else {
+                    navigation.navigate('PublicProfileScreen', { userId: item.id });
+                  }
+                }}
+              >
+                <Image source={item.profileImage ? { uri: item.profileImage } : require('../assets/Avatar_placeholder.png')} style={styles.providerImage} />
+                <View style={styles.providerInfo}>
+                  <Text style={styles.providerName}>{item.username || item.fullName || 'Provider'}</Text>
+                  <View style={styles.ratingContainer}>
+                    <Icon name="star" size={16} color={COLORS.accent} />
+                    <Text style={styles.rating}>{item.avgRating ? item.avgRating.toFixed(1) : 'N/A'}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+            {visibleProviderCount < topProviders.length && (
+              <TouchableOpacity style={styles.loadMoreButton} onPress={() => setVisibleProviderCount(v => v + 5)}>
                 <Text style={styles.loadMoreButtonText}>Load More</Text>
               </TouchableOpacity>
             )}
@@ -431,7 +506,7 @@ const styles = StyleSheet.create({
     marginTop: 16
   },
   loadMoreButton: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: '#B78BFA',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,
@@ -440,7 +515,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   loadMoreButtonText: {
-    color: COLORS.text.light,
+    color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
   },

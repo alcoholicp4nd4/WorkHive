@@ -329,7 +329,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
-    paddingTop: Platform.OS === 'ios' ? 0 : StatusBar.currentHeight + 16,
   },
   backButton: {
     marginRight: 16,
@@ -391,7 +390,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   currentUserMessageContent: {
-    backgroundColor: '#5A31F4',
+    backgroundColor: '#B78BFA',
   },
   otherUserMessageContent: {
     backgroundColor: '#E2E8F0',

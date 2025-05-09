@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
       color: '#DC2626', // Red text
   },
   reportButton: {
-    backgroundColor: '#5A31F4', // Primary app color
+    backgroundColor: '#B78BFA', // Purplish color for report button
   },
   reportButtonText: {
       color: '#FFFFFF', // White text
